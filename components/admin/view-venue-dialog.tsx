@@ -27,7 +27,7 @@ export function ViewVenueDialog({ venue, open, onOpenChange }: ViewVenueDialogPr
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="amenities">Amenities & Rules</TabsTrigger>
             <TabsTrigger value="items">Provided Items</TabsTrigger>
-            <TabsTrigger value="gallery">Gallery</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 mt-4">
@@ -198,10 +198,10 @@ export function ViewVenueDialog({ venue, open, onOpenChange }: ViewVenueDialogPr
               )}
             </TabsContent>
 
-            <TabsContent value="gallery" className="p-1">
+            <TabsContent value="media" className="p-1">
               <Card>
                 <CardHeader>
-                  <CardTitle>Venue Gallery</CardTitle>
+                  <CardTitle>Venue Media</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {venue.media && venue.media.length > 0 ? (
