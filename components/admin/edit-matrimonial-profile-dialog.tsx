@@ -153,6 +153,17 @@ export function EditMatrimonialProfileDialog({
         )
       }
 
+      // Upload profile biodata to Firebase Storage
+      let uploadedBioDataUrl = ""
+      if (bioData) {
+        // Upload the biodata
+        
+        uploadedBioDataUrl = await uploadProfileImage(
+          bioData,
+          `matrimonial_bioData/${Date.now()}_${bioData.name}`
+        )
+      }
+
       // Create a clean update object without undefined values
       const updatedProfile: Record<string, any> = {
         ...profile,
@@ -196,6 +207,16 @@ export function EditMatrimonialProfileDialog({
         }
       }
 
+      // Only add bioData if it's not empty
+      if (uploadedBioDataUrl) {
+        updatedProfile.bioDataLink = uploadedBioDataUrl
+      } else {
+        // If no image URL and the original had one, keep the original
+        if (profile.bioDataLink) {
+          updatedProfile.bioDataLink = profile.bioDataLink
+        }
+      }
+      
       // Add alternatePhone only if it exists
       if (data.alternatePhone) {
         updatedProfile.alternatePhone = data.alternatePhone

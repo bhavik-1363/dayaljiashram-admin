@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { PageHeader } from "@/components/admin/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
@@ -10,40 +10,103 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ImagePlus, Save, X } from "lucide-react"
+import { ImagePlus, Loader2, Save, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-// Sample data for the astrology service
-const initialAstrologyData = {
-  title: "Community Astrology Services",
-  description:
-    "Our astrology services provide guidance and insights based on traditional astrological practices. We offer personalized horoscope readings, compatibility analysis, and auspicious timing consultations. Our experienced astrologers combine ancient wisdom with modern understanding to help community members navigate life's challenges and opportunities.",
-  contactInfo: "Chief Astrologer: Raj Sharma\nPhone: (555) 234-5678\nEmail: astrology@community.org",
-  openingHours: "Monday-Saturday: 9am-5pm, Sunday: By appointment only",
-  additionalInfo:
-    "Consultations are available in person or via video call. Please bring your birth date, time, and location for accurate readings. Special rates available for community members.",
-  images: ["/celestial-guidance.png", "/celestial-zodiac-wheel.png", "/celestial-glyphs.png"],
-}
+import {
+  type Astrology,
+  getAstrologyInfo,
+  updateAstrologyInfo,
+  uploadAstrologyImage,
+} from "@/lib/firebase/services/astrology-service"
+import { Progress } from "@/components/ui/progress"
 
 export default function AstrologyPage() {
+  const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [data, setData] = useState(initialAstrologyData)
+  const [data, setData] = useState<Astrology | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
+
+  // Fetch astrology data
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const astrologyData = await getAstrologyInfo()
+        setData(astrologyData)
+        setHasChanges(false)
+      } catch (error) {
+        console.error("Error fetching astrology data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load astrology information. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Update field handler
   const updateField = (field: string, value: string) => {
-    setData((prev) => ({ ...prev, [field]: value }))
+    if (!data) return
+
+    setData((prev) => {
+      if (!prev) return prev
+      return { ...prev, [field]: value }
+    })
     setHasChanges(true)
   }
 
   // Handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault()
-    if (e.target.files && e.target.files.length > 0) {
-      const newImages = Array.from(e.target.files).map((file) => URL.createObjectURL(file))
-      setData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }))
+    if (!data || !e.target.files || e.target.files.length === 0) return
+
+    try {
+      const newImages = [...data.images]
+      const files = Array.from(e.target.files)
+
+      for (const file of files) {
+        const uploadId = `upload_${Date.now()}_${file.name}`
+        setUploadProgress((prev) => ({ ...prev, [uploadId]: 0 }))
+
+        const imageUrl = await uploadAstrologyImage(file, (progress) => {
+          setUploadProgress((prev) => ({ ...prev, [uploadId]: progress }))
+        })
+
+        newImages.push(imageUrl)
+
+        // Remove progress after a short delay
+        setTimeout(() => {
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev }
+            delete newProgress[uploadId]
+            return newProgress
+          })
+        }, 1000)
+      }
+
+      setData((prev) => {
+        if (!prev) return prev
+        return { ...prev, images: newImages }
+      })
       setHasChanges(true)
+
+      toast({
+        title: "Images uploaded",
+        description: `Successfully uploaded ${files.length} image(s)`,
+      })
+    } catch (error) {
+      console.error("Error uploading images:", error)
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading one or more images. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -59,34 +122,77 @@ export default function AstrologyPage() {
   }
 
   // Handle drop event
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const newImages = Array.from(e.dataTransfer.files).map((file) => URL.createObjectURL(file))
-      setData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }))
+
+    if (!data || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return
+
+    try {
+      const newImages = [...data.images]
+      const files = Array.from(e.dataTransfer.files)
+
+      for (const file of files) {
+        const uploadId = `upload_${Date.now()}_${file.name}`
+        setUploadProgress((prev) => ({ ...prev, [uploadId]: 0 }))
+
+        const imageUrl = await uploadAstrologyImage(file, (progress) => {
+          setUploadProgress((prev) => ({ ...prev, [uploadId]: progress }))
+        })
+
+        newImages.push(imageUrl)
+
+        // Remove progress after a short delay
+        setTimeout(() => {
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev }
+            delete newProgress[uploadId]
+            return newProgress
+          })
+        }, 1000)
+      }
+
+      setData((prev) => {
+        if (!prev) return prev
+        return { ...prev, images: newImages }
+      })
       setHasChanges(true)
+
+      toast({
+        title: "Images uploaded",
+        description: `Successfully uploaded ${files.length} image(s)`,
+      })
+    } catch (error) {
+      console.error("Error uploading images:", error)
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading one or more images. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
   // Remove image
   const removeImage = (index: number) => {
+    if (!data) return
+
     const newImages = [...data.images]
     newImages.splice(index, 1)
-    setData((prev) => ({ ...prev, images: newImages }))
+
+    setData((prev) => {
+      if (!prev) return prev
+      return { ...prev, images: newImages }
+    })
     setHasChanges(true)
   }
 
   const handleSave = async () => {
+    if (!data) return
+
     setIsSubmitting(true)
     try {
-      // In a real application, you would send this data to your API
-      console.log("Saving astrology data:", data)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
+      await updateAstrologyInfo(data)
       setHasChanges(false)
       toast({
         title: "Changes saved",
@@ -104,6 +210,30 @@ export default function AstrologyPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading astrology information...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-destructive">Failed to load astrology information</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -111,8 +241,17 @@ export default function AstrologyPage() {
         description="Manage community astrology service information and images"
         action={
           <Button onClick={handleSave} disabled={isSubmitting || !hasChanges}>
-            <Save className="mr-2 h-4 w-4" />
-            {isSubmitting ? "Saving..." : "Save Changes"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
           </Button>
         }
       />
@@ -215,6 +354,21 @@ export default function AstrologyPage() {
                 </div>
               </div>
 
+              {/* Upload Progress Indicators */}
+              {Object.keys(uploadProgress).length > 0 && (
+                <div className="space-y-3">
+                  {Object.entries(uploadProgress).map(([id, progress]) => (
+                    <div key={id} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Uploading image...</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {data.images.length > 0 && (
                 <div className="space-y-2">
                   <Label>Current Images</Label>
@@ -245,8 +399,17 @@ export default function AstrologyPage() {
 
           <div className="mt-6 flex justify-end">
             <Button onClick={handleSave} disabled={isSubmitting || !hasChanges}>
-              <Save className="mr-2 h-4 w-4" />
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </div>
         </CardContent>

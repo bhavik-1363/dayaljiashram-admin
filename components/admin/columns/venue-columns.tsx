@@ -52,6 +52,12 @@ export type Venue = {
     phone: string
     email: string
   }
+  media?: Array<{
+    id: string
+    type: "image" | "video"
+    url: string
+    thumbnail?: string
+  }>
 }
 
 interface VenueActionsProviderProps {

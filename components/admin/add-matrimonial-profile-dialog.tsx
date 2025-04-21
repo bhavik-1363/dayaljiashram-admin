@@ -93,6 +93,17 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
         )
       }
 
+      // Upload profile biodata to Firebase Storage
+      let uploadedBioDataUrl = ""
+      if (bioData) {
+        // Upload the biodata
+        
+        uploadedBioDataUrl = await uploadProfileImage(
+          bioData,
+          `matrimonial_bioData/${Date.now()}_${bioData.name}`
+        )
+      }
+
       // Create the profile object with cleaned data (no undefined values)
       const newProfile: Record<string, any> = {
         name: data.name,
@@ -129,6 +140,11 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
       // Only add imageUrl if it's not empty
       if (uploadedImageUrl) {
         newProfile.imageUrl = uploadedImageUrl
+      }
+
+      // Only add bioData if it's not empty
+      if (uploadedBioDataUrl) {
+        newProfile.bioDataLink = uploadedBioDataUrl
       }
 
       // Add alternatePhone only if it exists

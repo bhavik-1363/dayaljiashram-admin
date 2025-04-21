@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PageHeader } from "@/components/admin/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
@@ -10,26 +10,52 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ImagePlus, Save, X } from "lucide-react"
+import { ImagePlus, Loader2, Save, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-// Sample data for the gym
-const initialGymData = {
-  title: "Community Fitness Center",
-  description:
-    "Our state-of-the-art fitness center is equipped with modern exercise equipment, dedicated workout spaces, and professional trainers to help you achieve your fitness goals. The gym offers a variety of programs including strength training, cardio workouts, yoga classes, and personalized fitness plans.",
-  contactInfo: "Fitness Manager: John Doe\nPhone: (555) 123-4567\nEmail: gym@community.org",
-  openingHours: "Monday-Friday: 6am-10pm, Saturday: 8am-8pm, Sunday: 9am-6pm",
-  additionalInfo:
-    "Membership is free for community members. Please bring your membership card. Towel service available. Personal training sessions can be booked at the front desk.",
-  images: ["/modern-research-facility.png", "/modern-gym-floor.png", "/vibrant-urban-gym.png"],
-}
+import {
+  type Gym,
+  getGymData,
+  updateGymData,
+  uploadGymImage,
+  type UploadProgress,
+} from "@/lib/firebase/services/gym-service"
+import { Progress } from "@/components/ui/progress"
 
 export default function GymPage() {
+  const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [data, setData] = useState(initialGymData)
+  const [data, setData] = useState<Gym>({
+    title: "",
+    description: "",
+    contactInfo: "",
+    openingHours: "",
+    additionalInfo: "",
+    images: [],
+  })
   const [dragActive, setDragActive] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({})
+
+  // Fetch gym data on component mount
+  useEffect(() => {
+    async function fetchGymData() {
+      try {
+        const gymData = await getGymData()
+        setData(gymData)
+        setIsLoading(false)
+      } catch (error) {
+        console.error("Error fetching gym data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load gym information. Please try again.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+      }
+    }
+
+    fetchGymData()
+  }, [])
 
   // Update field handler
   const updateField = (field: string, value: string) => {
@@ -38,12 +64,11 @@ export default function GymPage() {
   }
 
   // Handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault()
     if (e.target.files && e.target.files.length > 0) {
-      const newImages = Array.from(e.target.files).map((file) => URL.createObjectURL(file))
-      setData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }))
-      setHasChanges(true)
+      const files = Array.from(e.target.files)
+      await uploadFiles(files)
     }
   }
 
@@ -59,14 +84,71 @@ export default function GymPage() {
   }
 
   // Handle drop event
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const newImages = Array.from(e.dataTransfer.files).map((file) => URL.createObjectURL(file))
-      setData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }))
-      setHasChanges(true)
+      const files = Array.from(e.dataTransfer.files)
+      await uploadFiles(files)
+    }
+  }
+
+  // Upload files
+  const uploadFiles = async (files: File[]) => {
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Invalid file type",
+          description: "Only image files are allowed.",
+          variant: "destructive",
+        })
+        continue
+      }
+
+      const fileId = `upload_${Date.now()}_${file.name}`
+      setUploadProgress((prev) => ({
+        ...prev,
+        [fileId]: { progress: 0 },
+      }))
+
+      try {
+        const imageUrl = await uploadGymImage(file, (progress) => {
+          setUploadProgress((prev) => ({
+            ...prev,
+            [fileId]: progress,
+          }))
+        })
+
+        // Add the new image URL to the data
+        setData((prev) => ({
+          ...prev,
+          images: [...prev.images, imageUrl],
+        }))
+        setHasChanges(true)
+
+        // Remove progress indicator after a delay
+        setTimeout(() => {
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev }
+            delete newProgress[fileId]
+            return newProgress
+          })
+        }, 2000)
+      } catch (error) {
+        console.error("Error uploading image:", error)
+        toast({
+          title: "Upload failed",
+          description: "There was an error uploading the image. Please try again.",
+          variant: "destructive",
+        })
+
+        setUploadProgress((prev) => {
+          const newProgress = { ...prev }
+          delete newProgress[fileId]
+          return newProgress
+        })
+      }
     }
   }
 
@@ -81,12 +163,7 @@ export default function GymPage() {
   const handleSave = async () => {
     setIsSubmitting(true)
     try {
-      // In a real application, you would send this data to your API
-      console.log("Saving gym data:", data)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
+      await updateGymData(data)
       setHasChanges(false)
       toast({
         title: "Changes saved",
@@ -104,6 +181,15 @@ export default function GymPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading gym information...</span>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -111,7 +197,7 @@ export default function GymPage() {
         description="Manage community gym information and images"
         action={
           <Button onClick={handleSave} disabled={isSubmitting || !hasChanges}>
-            <Save className="mr-2 h-4 w-4" />
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             {isSubmitting ? "Saving..." : "Save Changes"}
           </Button>
         }
@@ -215,6 +301,22 @@ export default function GymPage() {
                 </div>
               </div>
 
+              {/* Upload Progress */}
+              {Object.keys(uploadProgress).length > 0 && (
+                <div className="space-y-3">
+                  <Label>Upload Progress</Label>
+                  {Object.entries(uploadProgress).map(([id, { progress }]) => (
+                    <div key={id} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>{id.split("_").slice(2).join("_")}</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {data.images.length > 0 && (
                 <div className="space-y-2">
                   <Label>Current Images</Label>
@@ -223,7 +325,7 @@ export default function GymPage() {
                       <div key={index} className="relative group">
                         <img
                           src={image || "/placeholder.svg"}
-                          alt={`Uploaded image ${index + 1}`}
+                          alt={`Gym image ${index + 1}`}
                           className="h-32 w-full object-cover rounded-md"
                         />
                         <Button
@@ -245,7 +347,7 @@ export default function GymPage() {
 
           <div className="mt-6 flex justify-end">
             <Button onClick={handleSave} disabled={isSubmitting || !hasChanges}>
-              <Save className="mr-2 h-4 w-4" />
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </div>

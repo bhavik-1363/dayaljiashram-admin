@@ -5,13 +5,32 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/lib/firebase/auth-context"
-
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Community Admin Panel",
-  description: "Admin panel for managing community resources",
-    generator: 'v0.dev'
+  title: "Dayalji Ashram Admin Panel",
+  description: "Admin panel for managing community resources of dayalji ashram",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
+  openGraph: {
+    title: "Dayalji Ashram Admin Panel",
+    description: "Admin panel for managing community resources of dayalji ashram",
+    url: "https://dayalji-ashram-admin.vercel.app",
+    siteName: "Dayalji Ashram Admin Panel",
+    // images: [
+    //   {
+    //     url: "/og.png",
+    //     width: 800,
+    //     height: 600,
+    //     alt: "Dayalji Ashram Admin Panel",
+    //   },
+    // ],
+    locale: "en-IN",
+    type: "website",
+  }
 }
 
 export default function RootLayout({
@@ -32,3 +51,6 @@ export default function RootLayout({
     </html>
   )
 }
+
+
+import './globals.css'

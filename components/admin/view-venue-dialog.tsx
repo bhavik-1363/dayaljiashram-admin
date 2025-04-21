@@ -204,12 +204,12 @@ export function ViewVenueDialog({ venue, open, onOpenChange }: ViewVenueDialogPr
                   <CardTitle>Venue Gallery</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {venue.images && venue.images.length > 0 ? (
+                  {venue.media && venue.media.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {venue.images.map((image, index) => (
+                      {venue.media.map((image, index) => (
                         <div key={index} className="relative aspect-video rounded-md overflow-hidden border">
                           <Image
-                            src={image || "/placeholder.svg"}
+                            src={image.url || "/placeholder.svg"}
                             alt={`${venue.name} - Image ${index + 1}`}
                             fill
                             className="object-cover"

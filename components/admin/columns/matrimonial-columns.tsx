@@ -52,6 +52,8 @@ export interface MatrimonialProfile {
   familyInfo?: string
   partnerInfo?: string
   imageUrl?: string
+  photos?: string[]
+  bioDataLink?: string, 
   deleted?: boolean // Add this for type safety
 }
 

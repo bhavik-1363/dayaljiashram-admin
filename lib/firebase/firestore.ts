@@ -102,7 +102,7 @@ export const deleteDocument = async (collectionName: string, id: string): Promis
 }
 
 // Generic function to get a document by ID
-export const getDocument = async <T>(\
+export const getDocument = async <T>(
   collectionName: string,
   id: string
 )

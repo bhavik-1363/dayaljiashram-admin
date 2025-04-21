@@ -12,61 +12,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { X, Plus, Save, Upload, Loader2 } from "lucide-react"
+import { X, Plus, Save, Upload, Loader2, AlertCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
-
-// Mock hostel data
-const hostelData = {
-  boys: {
-    name: "Boys Hostel",
-    description:
-      "Our Boys Hostel provides a safe, comfortable, and supportive environment for students. With modern amenities and a focus on academic excellence, we ensure that students have everything they need for a productive stay.",
-    facilities: [
-      "Wi-Fi",
-      "24/7 Security",
-      "Laundry Service",
-      "Study Rooms",
-      "Recreation Area",
-      "Dining Hall",
-      "Power Backup",
-    ],
-    roomTypes: ["single", "double", "triple"],
-    roomFeatures: ["Attached Bathroom", "Study Table", "Wardrobe", "Bed with Mattress", "Bookshelf", "Fan", "Chair"],
-    contactInfo:
-      "Warden: Mr. Rajesh Patel\nPhone: (555) 123-4567\nEmail: boyshostel@community.org\nOffice Hours: Monday-Saturday 9am-5pm",
-    images: [], // Removed default images
-  },
-  girls: {
-    name: "Girls Hostel",
-    description:
-      "Our Girls Hostel offers a secure and nurturing environment for female students. With comprehensive facilities and a focus on holistic development, we provide a home away from home that supports academic growth and personal wellbeing.",
-    facilities: [
-      "Wi-Fi",
-      "24/7 Security",
-      "Laundry Service",
-      "Study Rooms",
-      "Recreation Area",
-      "Dining Hall",
-      "Power Backup",
-      "CCTV Surveillance",
-    ],
-    roomTypes: ["double", "triple"],
-    roomFeatures: [
-      "Attached Bathroom",
-      "Study Table",
-      "Wardrobe",
-      "Bed with Mattress",
-      "Bookshelf",
-      "Fan",
-      "Chair",
-      "Mirror",
-    ],
-    contactInfo:
-      "Warden: Mrs. Priya Sharma\nPhone: (555) 987-6543\nEmail: girlshostel@community.org\nOffice Hours: Monday-Saturday 9am-5pm",
-    images: [], // Removed default images
-  },
-}
+import {
+  getHostelByType,
+  updateOrCreateHostelByType,
+  uploadHostelImage,
+  type Hostel,
+} from "@/lib/firebase/services/hostels-service"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // Room type options
 const roomTypeOptions = [
@@ -79,17 +34,50 @@ const roomTypeOptions = [
 export default function HostelsPage() {
   const { toast } = useToast()
   const [selectedHostel, setSelectedHostel] = useState<"boys" | "girls">("boys")
-  const [hostelInfo, setHostelInfo] = useState(hostelData[selectedHostel])
+  const [hostelInfo, setHostelInfo] = useState<Hostel | null>(null)
   const [newFacility, setNewFacility] = useState("")
   const [newRoomFeature, setNewRoomFeature] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
 
-  // Update hostel info when selection changes
+  // Fetch hostel data when selection changes
   useEffect(() => {
-    setHostelInfo(hostelData[selectedHostel])
-    setIsDirty(false)
+    const fetchHostelData = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const hostel = await getHostelByType(selectedHostel)
+        if (hostel) {
+          setHostelInfo(hostel)
+        } else {
+          // If no hostel found, create a default one
+          setHostelInfo({
+            name: selectedHostel === "boys" ? "Boys Hostel" : "Girls Hostel",
+            description: "",
+            type: selectedHostel,
+            location: "",
+            facilities: [],
+            roomTypes: [],
+            roomFeatures: [],
+            contactInfo: "",
+            images: [],
+            status: "active",
+          })
+        }
+      } catch (err) {
+        console.error("Error fetching hostel data:", err)
+        setError("Failed to load hostel information. Please try again.")
+      } finally {
+        setIsLoading(false)
+        setIsDirty(false)
+      }
+    }
+
+    fetchHostelData()
   }, [selectedHostel])
 
   // Handle hostel selection change
@@ -105,26 +93,40 @@ export default function HostelsPage() {
 
   // Handle text input changes
   const handleInputChange = (field: string, value: string) => {
-    setHostelInfo((prev) => ({ ...prev, [field]: value }))
+    if (!hostelInfo) return
+
+    setHostelInfo((prev) => {
+      if (!prev) return null
+      return { ...prev, [field]: value }
+    })
     setIsDirty(true)
   }
 
   // Handle room type changes
   const handleRoomTypeChange = (type: string, checked: boolean) => {
-    setHostelInfo((prev) => ({
-      ...prev,
-      roomTypes: checked ? [...prev.roomTypes, type] : prev.roomTypes.filter((t) => t !== type),
-    }))
+    if (!hostelInfo) return
+
+    setHostelInfo((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        roomTypes: checked ? [...prev.roomTypes, type] : prev.roomTypes.filter((t) => t !== type),
+      }
+    })
     setIsDirty(true)
   }
 
   // Add new facility
   const addFacility = () => {
+    if (!hostelInfo) return
     if (newFacility.trim() !== "" && !hostelInfo.facilities.includes(newFacility.trim())) {
-      setHostelInfo((prev) => ({
-        ...prev,
-        facilities: [...prev.facilities, newFacility.trim()],
-      }))
+      setHostelInfo((prev) => {
+        if (!prev) return null
+        return {
+          ...prev,
+          facilities: [...prev.facilities, newFacility.trim()],
+        }
+      })
       setNewFacility("")
       setIsDirty(true)
     }
@@ -132,20 +134,29 @@ export default function HostelsPage() {
 
   // Remove facility
   const removeFacility = (facility: string) => {
-    setHostelInfo((prev) => ({
-      ...prev,
-      facilities: prev.facilities.filter((f) => f !== facility),
-    }))
+    if (!hostelInfo) return
+
+    setHostelInfo((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        facilities: prev.facilities.filter((f) => f !== facility),
+      }
+    })
     setIsDirty(true)
   }
 
   // Add new room feature
   const addRoomFeature = () => {
+    if (!hostelInfo) return
     if (newRoomFeature.trim() !== "" && !hostelInfo.roomFeatures.includes(newRoomFeature.trim())) {
-      setHostelInfo((prev) => ({
-        ...prev,
-        roomFeatures: [...prev.roomFeatures, newRoomFeature.trim()],
-      }))
+      setHostelInfo((prev) => {
+        if (!prev) return null
+        return {
+          ...prev,
+          roomFeatures: [...prev.roomFeatures, newRoomFeature.trim()],
+        }
+      })
       setNewRoomFeature("")
       setIsDirty(true)
     }
@@ -153,22 +164,26 @@ export default function HostelsPage() {
 
   // Remove room feature
   const removeRoomFeature = (feature: string) => {
-    setHostelInfo((prev) => ({
-      ...prev,
-      roomFeatures: prev.roomFeatures.filter((f) => f !== feature),
-    }))
+    if (!hostelInfo) return
+
+    setHostelInfo((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        roomFeatures: prev.roomFeatures.filter((f) => f !== feature),
+      }
+    })
     setIsDirty(true)
   }
 
   // Handle save
   const handleSave = async () => {
+    if (!hostelInfo) return
+
     setIsSaving(true)
     try {
-      // In a real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Update the mock data (in a real app, this would happen on the server)
-      hostelData[selectedHostel] = hostelInfo
+      console.log("Saving hostel information:", hostelInfo)
+      await updateOrCreateHostelByType(selectedHostel, hostelInfo)
 
       toast({
         title: "Success",
@@ -176,6 +191,7 @@ export default function HostelsPage() {
       })
       setIsDirty(false)
     } catch (error) {
+      console.error("Error saving hostel:", error)
       toast({
         title: "Error",
         description: "Failed to save hostel information. Please try again.",
@@ -216,28 +232,103 @@ export default function HostelsPage() {
   }
 
   // Process selected images
-  const handleImages = (files: FileList) => {
-    // In a real app, you would upload these files to a server
-    // For now, we'll create placeholder URLs
-    const newImages = Array.from(files).map(
-      (_, index) =>
-        `/placeholder.svg?height=300&width=400&query=${selectedHostel}%20hostel%20${hostelInfo.images.length + index + 1}`,
-    )
+  const handleImages = async (files: FileList) => {
+    if (!hostelInfo) return
 
-    setHostelInfo((prev) => ({
-      ...prev,
-      images: [...prev.images, ...newImages],
-    }))
+    // Convert FileList to array
+    const fileArray = Array.from(files)
+
+    // Create a copy of the current images
+    const updatedImages = [...hostelInfo.images]
+
+    // Create a new progress tracker
+    const newProgress: Record<string, number> = {}
+
+    // Process each file
+    for (const file of fileArray) {
+      const fileId = `${Date.now()}_${file.name}`
+      newProgress[fileId] = 0
+
+      try {
+        // Update progress state
+        setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }))
+
+        // Upload the image
+        const imageUrl = await uploadHostelImage(file, (progress) => {
+          setUploadProgress((prev) => ({ ...prev, [fileId]: progress }))
+        })
+
+        // Add the new image URL to the array
+        updatedImages.push(imageUrl)
+
+        // Remove from progress tracking
+        setUploadProgress((prev) => {
+          const updated = { ...prev }
+          delete updated[fileId]
+          return updated
+        })
+      } catch (error) {
+        console.error(`Error uploading image ${file.name}:`, error)
+        toast({
+          title: "Upload Error",
+          description: `Failed to upload ${file.name}. Please try again.`,
+          variant: "destructive",
+        })
+      }
+    }
+
+    // Update the hostel info with the new images
+    setHostelInfo((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        images: updatedImages,
+      }
+    })
     setIsDirty(true)
   }
 
   // Remove image
   const removeImage = (index: number) => {
-    setHostelInfo((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }))
+    if (!hostelInfo) return
+
+    setHostelInfo((prev) => {
+      if (!prev) return null
+      return {
+        ...prev,
+        images: prev.images.filter((_, i) => i !== index),
+      }
+    })
     setIsDirty(true)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading hostel information...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive" className="my-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!hostelInfo) {
+    return (
+      <Alert variant="destructive" className="my-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>Failed to load hostel information. Please refresh the page and try again.</AlertDescription>
+      </Alert>
+    )
   }
 
   return (
@@ -443,6 +534,26 @@ export default function HostelsPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Show upload progress if any */}
+              {Object.keys(uploadProgress).length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {Object.entries(uploadProgress).map(([fileId, progress]) => (
+                    <div key={fileId} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Uploading image...</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <div className="w-full bg-secondary h-1 rounded-full overflow-hidden">
+                        <div
+                          className="bg-primary h-1 transition-all duration-300 ease-in-out"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div
                 className={cn(

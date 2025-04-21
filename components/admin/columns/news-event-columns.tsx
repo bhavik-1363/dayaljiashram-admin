@@ -25,6 +25,7 @@ export type NewsEvent = {
   title: string
   type: "news" | "event"
   category: string
+  location: string
   publishDate: string
   eventDate?: string
   author: string

@@ -42,6 +42,7 @@ export function EditNewsEventDialog({ newsEvent, open, onOpenChange, onUpdateNew
     title: "",
     type: "news" as "news" | "event",
     category: "",
+    location: "",
     publishDate: new Date(),
     eventDate: undefined as Date | undefined,
     author: "",
@@ -72,6 +73,7 @@ export function EditNewsEventDialog({ newsEvent, open, onOpenChange, onUpdateNew
         title: newsEvent.title || "",
         type: newsEvent.type || "news",
         category: newsEvent.category || "",
+        location: newsEvent.location || "",
         publishDate: newsEvent.publishDate ? new Date(newsEvent.publishDate) : new Date(),
         eventDate: newsEvent.eventDate ? new Date(newsEvent.eventDate) : undefined,
         author: newsEvent.author || "",
@@ -132,6 +134,10 @@ export function EditNewsEventDialog({ newsEvent, open, onOpenChange, onUpdateNew
 
     if (!formData.category.trim()) {
       newErrors.category = "Category is required"
+    }
+
+    if (!formData.location.trim()) {
+      newErrors.location = "Location is required"
     }
 
     if (!formData.author.trim()) {
@@ -258,6 +264,7 @@ export function EditNewsEventDialog({ newsEvent, open, onOpenChange, onUpdateNew
         title: formData.title,
         type: formData.type,
         category: formData.category,
+        location: formData.location,
         publishDate: publishDateFormatted,
         eventDate: eventDateFormatted,
         author: formData.author,
@@ -404,6 +411,21 @@ export function EditNewsEventDialog({ newsEvent, open, onOpenChange, onUpdateNew
                   />
                   {errors.category && <p className="text-sm text-destructive">{errors.category}</p>}
                 </div>
+                
+                <div className="space-y-2">
+                   <Label htmlFor="location" className={errors.location ? "text-destructive" : ""}>
+                   Location
+                   </Label>
+                   <Input
+                     id="location"
+                     name="location"
+                     value={formData.location}
+                     onChange={handleInputChange}
+                     placeholder="Enter location"
+                     className={errors.location ? "border-destructive" : ""}
+                   />
+                   {errors.location && <p className="text-sm text-destructive">{errors.location}</p>}
+                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

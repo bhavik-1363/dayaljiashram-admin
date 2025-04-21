@@ -318,11 +318,11 @@ class FirebaseMembersService implements MembersService {
       // Set explicit metadata with the content type
       const metadata = {
         contentType: contentType,
-        customMetadata: {
-          originalName: file.name,
-          originalType: file.type,
-          uploadedAt: new Date().toISOString(),
-        },
+        // customMetadata: {
+        //   originalName: file.name,
+        //   originalType: file.type,
+        //   uploadedAt: new Date().toISOString(),
+        // },
       }
 
       console.log("Uploading with metadata:", metadata)

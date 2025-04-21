@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,15 +11,20 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlusCircle, Trash2, X } from "lucide-react"
+import { ImageIcon, PlusCircle, Trash2, Upload, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { Venue } from "@/components/admin/columns/venue-columns"
+import { toast } from "@/components/ui/use-toast"
+import { Progress } from "@/components/ui/progress"
+import { uploadNewsEventMedia } from "@/lib/firebase/storage"
 
 interface AddVenueDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAddVenue?: (venue: Venue) => void
 }
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export function AddVenueDialog({ open, onOpenChange, onAddVenue }: AddVenueDialogProps) {
   const [formData, setFormData] = useState({
@@ -56,6 +61,19 @@ export function AddVenueDialog({ open, onOpenChange, onAddVenue }: AddVenueDialo
   const [newItemQuantity, setNewItemQuantity] = useState(1)
   const [newItemDescription, setNewItemDescription] = useState("")
   const [newCategory, setNewCategory] = useState("")
+  const [mediaFiles, setMediaFiles] = useState<
+      Array<{
+        id: string
+        type: "image" | "video"
+        url: string
+        file?: File
+        thumbnail?: string
+        uploading?: boolean
+        progress?: number
+        error?: string
+      }>
+    >([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -215,15 +233,80 @@ export function AddVenueDialog({ open, onOpenChange, onAddVenue }: AddVenueDialo
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+    const uploadMedia = async () => {
+      const mediaWithFiles = mediaFiles.filter((media) => media.file)
+  
+      if (mediaWithFiles.length === 0) {
+        return mediaFiles
+      }
+  
+      // Update all media with files to show uploading state
+      setMediaFiles((prev) => prev.map((media) => (media.file ? { ...media, uploading: true, progress: 0 } : media)))
+  
+      const uploadPromises = mediaWithFiles.map(async (media) => {
+        if (!media.file) return media
+  
+        try {
+          const path = `venue/${Date.now()}_${media.file.name}`
+  
+          // Upload the file to Firebase Storage
+          const url = await uploadNewsEventMedia(path, media.file, (progress) => {
+            // Update progress for this specific file
+            setMediaFiles((prev) => prev.map((m) => (m.id === media.id ? { ...m, progress } : m)))
+          })
+  
+          // Return the updated media object with the Firebase Storage URL
+          return {
+            id: media.id,
+            type: media.type,
+            url: url,
+            thumbnail: media.type === "image" ? url : undefined,
+          }
+        } catch (error) {
+          console.error(`Error uploading file ${media.file.name}:`, error)
+  
+          // Update the media object with the error
+          setMediaFiles((prev) =>
+            prev.map((m) => (m.id === media.id ? { ...m, uploading: false, error: "Failed to upload file" } : m)),
+          )
+  
+          // Return the original media object without the file
+          return {
+            id: media.id,
+            type: media.type,
+            url: media.url,
+            thumbnail: media.thumbnail,
+            error: "Failed to upload",
+          }
+        }
+      })
+  
+      // Wait for all uploads to complete
+      const uploadedMedia = await Promise.all(uploadPromises)
+  
+      // Update the media files state with the uploaded URLs
+      setMediaFiles(uploadedMedia)
+  
+      // Return only the data needed for Firestore (id, type, url, thumbnail)
+      return uploadedMedia.map(({ id, type, url, thumbnail }) => ({
+        id,
+        type,
+        url,
+        thumbnail,
+      }))
+    }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Upload media files first
+    const uploadedMedia = await uploadMedia()
 
     // Create a new venue object with the form data
     const newVenue: Venue = {
       id: `venue-${Date.now()}`, // Temporary ID, will be replaced by the parent component
       ...formData,
-      image: "/urban-skyline-soiree.png", // Default image
-      images: ["/urban-skyline-soiree.png"], // Default images array
+      media: uploadedMedia, // Default images array
     }
 
     // Call the onAddVenue callback if provided
@@ -252,7 +335,69 @@ export function AddVenueDialog({ open, onOpenChange, onAddVenue }: AddVenueDialo
         email: "",
       },
     })
+    // Revoke all blob URLs to prevent memory leaks
+    mediaFiles.forEach((file) => {
+      if (file.url.startsWith("blob:")) {
+        URL.revokeObjectURL(file.url)
+      }
+    })
+    setMediaFiles([])
     onOpenChange(false)
+  }
+  
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    // Process each file
+    Array.from(files).forEach((file) => {
+      // Check file size
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds the 5MB limit.`,
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Create a unique ID for the file
+      const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // Determine file type
+      const fileType = file.type.startsWith("image/") ? "image" : "video"
+
+      // Create object URL for preview
+      const fileUrl = URL.createObjectURL(file)
+
+      // Add to media files
+      setMediaFiles((prev) => [
+        ...prev,
+        {
+          id: fileId,
+          type: fileType,
+          url: fileUrl,
+          file: file,
+          thumbnail: fileType === "image" ? fileUrl : undefined,
+        },
+      ])
+    })
+
+    // Reset the input
+    event.target.value = ""
+  }
+
+  const removeMedia = (id: string) => {
+    setMediaFiles((prev) => {
+      const mediaToRemove = prev.find((file) => file.id === id)
+
+      // Revoke the object URL to prevent memory leaks
+      if (mediaToRemove && mediaToRemove.url.startsWith("blob:")) {
+        URL.revokeObjectURL(mediaToRemove.url)
+      }
+
+      return prev.filter((file) => file.id !== id)
+    })
   }
 
   return (
@@ -264,11 +409,12 @@ export function AddVenueDialog({ open, onOpenChange, onAddVenue }: AddVenueDialo
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
               <TabsTrigger value="location">Location</TabsTrigger>
               <TabsTrigger value="features">Features</TabsTrigger>
               <TabsTrigger value="items">Provided Items</TabsTrigger>
+              <TabsTrigger value="media">Media</TabsTrigger>
             </TabsList>
 
             <div className="mt-4 overflow-y-auto max-h-[60vh] pr-1">
@@ -694,6 +840,104 @@ export function AddVenueDialog({ open, onOpenChange, onAddVenue }: AddVenueDialo
                   </Card>
                 </div>
               </TabsContent>
+              
+            <TabsContent value="media" className="space-y-6 p-1">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-sm font-medium">Media Files</h3>
+                  <div className="ml-auto">
+                    <label htmlFor="media-upload" className="cursor-pointer">
+                      <div className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 rounded-md text-sm font-medium">
+                        <Upload className="h-4 w-4" />
+                        <span>Upload</span>
+                      </div>
+                      <input
+                        id="media-upload"
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        className="sr-only"
+                        onChange={handleFileUpload}
+                        ref={fileInputRef}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {mediaFiles.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                      <ImageIcon className="h-10 w-10 mb-2 opacity-50" />
+                      <p>No media files uploaded</p>
+                      <p className="text-xs">Upload images or videos to include with this venue</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {mediaFiles.map((file) => (
+                      <Card key={file.id} className="overflow-hidden">
+                        <div className="relative aspect-video bg-muted">
+                          {file.type === "image" ? (
+                            <img src={file.url || "/placeholder.svg"} alt="" className="object-cover w-full h-full" />
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <video src={file.url} className="max-h-full max-w-full" controls />
+                            </div>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6"
+                            onClick={() => removeMedia(file.id)}
+                            type="button"
+                          >
+                            <span className="sr-only">Remove</span>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
+                            >
+                              <path d="M18 6 6 18" />
+                              <path d="m6 6 12 12" />
+                            </svg>
+                          </Button>
+
+                          {file.uploading && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-background/80 p-1">
+                              <Progress value={file.progress} className="h-2" />
+                              <p className="text-xs text-center mt-1">Uploading: {file.progress}%</p>
+                            </div>
+                          )}
+
+                          {file.error && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-destructive/80 p-1">
+                              <p className="text-xs text-white text-center">{file.error}</p>
+                            </div>
+                          )}
+                        </div>
+                        <CardContent className="p-2">
+                          <p className="text-xs truncate">
+                            {file.type === "image" ? "Image" : "Video"} {file.id.split("_")[1]}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-sm text-muted-foreground">
+                  Upload images or videos related to this venue. Maximum
+                  file size: 5MB.
+                </p>
+              </div>
+            </TabsContent>
             </div>
           </Tabs>
 

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PageHeader } from "@/components/admin/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
@@ -10,40 +10,103 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ImagePlus, Save, X } from "lucide-react"
+import { ImagePlus, Save, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-// Sample data for the book bank
-const initialBookBankData = {
-  title: "Community Book Bank",
-  description:
-    "Our Book Bank provides free access to educational materials, textbooks, and literature for all community members. We maintain a diverse collection of books across various subjects and age groups. The Book Bank operates on a borrow-and-return system, allowing members to access resources they might not otherwise be able to afford.",
-  contactInfo: "Librarian: Sarah Johnson\nPhone: (555) 987-6543\nEmail: bookbank@community.org",
-  openingHours: "Monday-Friday: 10am-6pm, Saturday: 10am-4pm, Sunday: Closed",
-  additionalInfo:
-    "Books can be borrowed for up to 3 weeks. Late returns may incur a small fee. Donations of gently used books are always welcome and appreciated.",
-  images: ["/grand-library-stacks.png", "/sharing-stories-community.png", "/diverse-educational-bookshelves.png"],
-}
+import {
+  type BookBank,
+  getBookBank,
+  updateBookBank,
+  uploadBookBankImage,
+} from "@/lib/firebase/services/book-bank-service"
+import { Progress } from "@/components/ui/progress"
 
 export default function BookBankPage() {
+  const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [data, setData] = useState(initialBookBankData)
+  const [bookBank, setBookBank] = useState<BookBank | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
+
+  // Fetch book bank data on component mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const data = await getBookBank()
+        setBookBank(data)
+        setHasChanges(false)
+      } catch (error) {
+        console.error("Error fetching book bank data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load book bank information. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Update field handler
   const updateField = (field: string, value: string) => {
-    setData((prev) => ({ ...prev, [field]: value }))
+    if (!bookBank) return
+
+    setBookBank((prev) => {
+      if (!prev) return prev
+      return { ...prev, [field]: value }
+    })
     setHasChanges(true)
   }
 
   // Handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault()
-    if (e.target.files && e.target.files.length > 0) {
-      const newImages = Array.from(e.target.files).map((file) => URL.createObjectURL(file))
-      setData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }))
-      setHasChanges(true)
+    if (!bookBank || !e.target.files || e.target.files.length === 0) return
+
+    const files = Array.from(e.target.files)
+
+    for (const file of files) {
+      const fileId = `upload_${Date.now()}_${file.name}`
+      setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }))
+
+      try {
+        const imageUrl = await uploadBookBankImage(file, (progress) => {
+          setUploadProgress((prev) => ({ ...prev, [fileId]: progress }))
+        })
+
+        setBookBank((prev) => {
+          if (!prev) return prev
+          return { ...prev, images: [...prev.images, imageUrl] }
+        })
+
+        setHasChanges(true)
+
+        // Remove progress after completion
+        setTimeout(() => {
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev }
+            delete newProgress[fileId]
+            return newProgress
+          })
+        }, 1000)
+      } catch (error) {
+        console.error("Error uploading image:", error)
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload ${file.name}. Please try again.`,
+          variant: "destructive",
+        })
+
+        // Remove progress on error
+        setUploadProgress((prev) => {
+          const newProgress = { ...prev }
+          delete newProgress[fileId]
+          return newProgress
+        })
+      }
     }
   }
 
@@ -59,33 +122,80 @@ export default function BookBankPage() {
   }
 
   // Handle drop event
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const newImages = Array.from(e.dataTransfer.files).map((file) => URL.createObjectURL(file))
-      setData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }))
-      setHasChanges(true)
+
+    if (!bookBank || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return
+
+    const files = Array.from(e.dataTransfer.files)
+
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue
+
+      const fileId = `upload_${Date.now()}_${file.name}`
+      setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }))
+
+      try {
+        const imageUrl = await uploadBookBankImage(file, (progress) => {
+          setUploadProgress((prev) => ({ ...prev, [fileId]: progress }))
+        })
+
+        setBookBank((prev) => {
+          if (!prev) return prev
+          return { ...prev, images: [...prev.images, imageUrl] }
+        })
+
+        setHasChanges(true)
+
+        // Remove progress after completion
+        setTimeout(() => {
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev }
+            delete newProgress[fileId]
+            return newProgress
+          })
+        }, 1000)
+      } catch (error) {
+        console.error("Error uploading image:", error)
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload ${file.name}. Please try again.`,
+          variant: "destructive",
+        })
+
+        // Remove progress on error
+        setUploadProgress((prev) => {
+          const newProgress = { ...prev }
+          delete newProgress[fileId]
+          return newProgress
+        })
+      }
     }
   }
 
   // Remove image
   const removeImage = (index: number) => {
-    const newImages = [...data.images]
+    if (!bookBank) return
+
+    const newImages = [...bookBank.images]
     newImages.splice(index, 1)
-    setData((prev) => ({ ...prev, images: newImages }))
+
+    setBookBank((prev) => {
+      if (!prev) return prev
+      return { ...prev, images: newImages }
+    })
+
     setHasChanges(true)
   }
 
   const handleSave = async () => {
+    if (!bookBank) return
+
     setIsSubmitting(true)
     try {
-      // In a real application, you would send this data to your API
-      console.log("Saving book bank data:", data)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await updateBookBank(bookBank)
 
       setHasChanges(false)
       toast({
@@ -102,6 +212,26 @@ export default function BookBankPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Loading book bank information...</span>
+      </div>
+    )
+  }
+
+  if (!bookBank) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
+        <p className="text-lg text-red-500">Failed to load book bank information.</p>
+        <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
+          Retry
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -125,7 +255,7 @@ export default function BookBankPage() {
                 <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
-                  value={data.title}
+                  value={bookBank.title}
                   onChange={(e) => updateField("title", e.target.value)}
                   placeholder="Facility Title"
                 />
@@ -135,7 +265,7 @@ export default function BookBankPage() {
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  value={data.description}
+                  value={bookBank.description}
                   onChange={(e) => updateField("description", e.target.value)}
                   placeholder="Describe the facility and its features..."
                   className="min-h-32"
@@ -146,7 +276,7 @@ export default function BookBankPage() {
                 <Label htmlFor="contactInfo">Contact Information</Label>
                 <Textarea
                   id="contactInfo"
-                  value={data.contactInfo}
+                  value={bookBank.contactInfo}
                   onChange={(e) => updateField("contactInfo", e.target.value)}
                   placeholder="Contact person, phone number, email..."
                   className="min-h-20"
@@ -157,7 +287,7 @@ export default function BookBankPage() {
                 <Label htmlFor="openingHours">Opening Hours</Label>
                 <Input
                   id="openingHours"
-                  value={data.openingHours}
+                  value={bookBank.openingHours}
                   onChange={(e) => updateField("openingHours", e.target.value)}
                   placeholder="e.g., Mon-Fri: 9am-5pm, Sat: 10am-2pm"
                 />
@@ -167,7 +297,7 @@ export default function BookBankPage() {
                 <Label htmlFor="additionalInfo">Additional Information</Label>
                 <Textarea
                   id="additionalInfo"
-                  value={data.additionalInfo}
+                  value={bookBank.additionalInfo}
                   onChange={(e) => updateField("additionalInfo", e.target.value)}
                   placeholder="Any additional information or special instructions..."
                   className="min-h-20"
@@ -215,15 +345,30 @@ export default function BookBankPage() {
                 </div>
               </div>
 
-              {data.images.length > 0 && (
+              {/* Upload Progress Indicators */}
+              {Object.keys(uploadProgress).length > 0 && (
+                <div className="space-y-3">
+                  {Object.entries(uploadProgress).map(([fileId, progress]) => (
+                    <div key={fileId} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>{fileId.split("_").slice(2).join("_")}</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {bookBank.images.length > 0 && (
                 <div className="space-y-2">
                   <Label>Current Images</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    {data.images.map((image, index) => (
+                    {bookBank.images.map((image, index) => (
                       <div key={index} className="relative group">
                         <img
                           src={image || "/placeholder.svg"}
-                          alt={`Uploaded image ${index + 1}`}
+                          alt={`Book bank image ${index + 1}`}
                           className="h-32 w-full object-cover rounded-md"
                         />
                         <Button
