@@ -29,7 +29,7 @@ export default function PartyPlotsPage() {
   const [selectedPartyPlot, setSelectedPartyPlot] = useState<PartyPlot | null>(null)
 
   // Get the handleDelete function from the actions provider
-  const { handleDelete } = useActions()
+  const { confirmAction } = useActions()
 
   // Fetch party plots on component mount
   useEffect(() => {
@@ -139,10 +139,26 @@ export default function PartyPlotsPage() {
   // Custom delete handler that shows confirmation dialog
   const handleDeleteWithConfirmation = (partyPlot: PartyPlot) => {
     // Use the handleDelete function from the actions provider to show the confirmation dialog
-    handleDelete(partyPlot.id, partyPlot.plotName, "Party Plot Booking", () => {
-      // This callback will be called when the user confirms the deletion
-      deletePartyPlot(partyPlot.id)
-    })
+    confirmAction({
+          title: "Delete Party Plot Booking",
+          description: `Are you sure you want to delete booking of ${partyPlot.plotName}? This action cannot be undone.`,
+          action: () => {
+            console.log("Deleting booking:", partyPlot.id)
+            // Call the onUpdateProfile callback if provided
+            deletePartyPlot(partyPlot.id)
+          },
+        })
+  }
+
+  // Handlers for opening dialogs
+  const openViewDialog = (partyPlot: PartyPlot) => {
+    setSelectedPartyPlot(partyPlot)
+    setViewDialogOpen(true)
+  }
+
+  const openEditDialog = (partyPlot: PartyPlot) => {
+    setSelectedPartyPlot(partyPlot)
+    setEditDialogOpen(true)
   }
 
   return (
@@ -160,14 +176,8 @@ export default function PartyPlotsPage() {
 
       <DataTable
         columns={createPartyPlotColumns({
-          openViewDialog: (partyPlot) => {
-            setSelectedPartyPlot(partyPlot)
-            setViewDialogOpen(true)
-          },
-          openEditDialog: (partyPlot) => {
-            setSelectedPartyPlot(partyPlot)
-            setEditDialogOpen(true)
-          },
+          openViewDialog,
+          openEditDialog,
           handleDeletePartyPlot: handleDeleteWithConfirmation,
         })}
         data={partyPlots}

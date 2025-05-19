@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Dayalji Ashram Admin Panel",
     description: "Admin panel for managing community resources of dayalji ashram",
-    url: "https://dayalji-ashram-admin.vercel.app",
+    url: "https://dayaljiashram-admin.vercel.app/admin",
     siteName: "Dayalji Ashram Admin Panel",
     // images: [
     //   {

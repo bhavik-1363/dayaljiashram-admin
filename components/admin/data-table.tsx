@@ -22,6 +22,8 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   isLoading?: boolean
   searchField?: string
+  filterField?: string
+  filterOptions?: { label: string; value: string }[]
 }
 
 export function DataTable<TData, TValue>({
@@ -29,6 +31,8 @@ export function DataTable<TData, TValue>({
   data,
   isLoading = false,
   searchField,
+  filterField,
+  filterOptions,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -53,15 +57,40 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {searchField && (
+      {(searchField || filterField) && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Input
-              placeholder={`Search ${searchField}...`}
-              value={(table.getColumn(searchField)?.getFilterValue() as string) ?? ""}
-              onChange={(event) => table.getColumn(searchField)?.setFilterValue(event.target.value)}
-              className="max-w-sm"
-            />
+            {searchField && (
+              <Input
+                placeholder={`Search ${searchField}...`}
+                value={(table.getColumn(searchField)?.getFilterValue() as string) ?? ""}
+                onChange={(event) => table.getColumn(searchField)?.setFilterValue(event.target.value)}
+                className="max-w-sm"
+              />
+            )}
+            {filterField && filterOptions && (
+              <Select
+                value={(table.getColumn(filterField)?.getFilterValue() as string) ?? "all"}
+                onValueChange={(value) => {
+                  if (value === "all") {
+                    table.getColumn(filterField)?.setFilterValue("")
+                  } else {
+                    table.getColumn(filterField)?.setFilterValue(value)
+                  }
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       )}
@@ -108,10 +137,10 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex-1 text-sm text-muted-foreground">
+        {/* <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
           selected.
-        </div>
+        </div> */}
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-2">
             <p className="text-sm font-medium">Rows per page</p>

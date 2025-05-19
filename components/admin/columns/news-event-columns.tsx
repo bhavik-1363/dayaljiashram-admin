@@ -3,16 +3,8 @@
 import type React from "react"
 
 import type { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, ArrowUpDown, Eye, Edit, Trash } from "lucide-react"
+import { ArrowUpDown, Eye, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { useActions } from "@/components/admin/action-provider"
@@ -56,7 +48,7 @@ export const NewsEventActionsProvider = ({ children, onDelete, onUpdate }: NewsE
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedNewsEvent, setSelectedNewsEvent] = useState<NewsEvent | null>(null)
-  const { handleDelete } = useActions()
+  const { confirmAction } = useActions()
 
   const openViewDialog = (newsEvent: NewsEvent) => {
     setSelectedNewsEvent(newsEvent)
@@ -69,12 +61,23 @@ export const NewsEventActionsProvider = ({ children, onDelete, onUpdate }: NewsE
   }
 
   const handleDeleteNewsEvent = (newsEvent: NewsEvent) => {
-    handleDelete(newsEvent.id, newsEvent.title, "News/Event", async () => {
-      // Call the onDelete callback if provided
-      if (onDelete) {
-        await onDelete(newsEvent.id)
-      }
-    })
+    // handleDelete(newsEvent.id, newsEvent.title, "News/Event", async () => {
+    //   // Call the onDelete callback if provided
+    //   if (onDelete) {
+    //     await onDelete(newsEvent.id)
+    //   }
+    // })
+    confirmAction({
+          title: "Delete News/Event",
+          description: `Are you sure you want to delete ${newsEvent.title}? This action cannot be undone.`,
+          action: async () => {
+            console.log("Deleting booking:", newsEvent.id)
+            // Call the onUpdateProfile callback if provided
+            if (onDelete) {
+              await onDelete(newsEvent.id)
+            }
+          },
+        })
   }
 
   const handleUpdateNewsEvent = async (updatedNewsEvent: NewsEvent): Promise<boolean> => {
@@ -109,25 +112,25 @@ export function createNewsEventColumns(actions: {
   handleDeleteNewsEvent: (newsEvent: NewsEvent) => void
 }): ColumnDef<NewsEvent>[] {
   return [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
+    // {
+    //   id: "select",
+    //   header: ({ table }) => (
+    //     <Checkbox
+    //       checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+    //       aria-label="Select all"
+    //     />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <Checkbox
+    //       checked={row.getIsSelected()}
+    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
+    //       aria-label="Select row"
+    //     />
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    // },
     {
       accessorKey: "title",
       header: ({ column }) => {
@@ -208,36 +211,19 @@ export function createNewsEventColumns(actions: {
             </Button>
 
             <Button variant="ghost" size="icon" onClick={() => actions.openEditDialog(newsEvent)}>
-              <Edit className="h-4 w-4" />
+              <Pencil className="h-4 w-4" />
               <span className="sr-only">Edit</span>
             </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(newsEvent.id)}>Copy ID</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => actions.openViewDialog(newsEvent)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  <span>View details</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => actions.openEditDialog(newsEvent)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  <span>Edit</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={() => actions.handleDeleteNewsEvent(newsEvent)}>
-                  <Trash className="mr-2 h-4 w-4" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => actions.handleDeleteNewsEvent(newsEvent)}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
           </div>
         )
       },

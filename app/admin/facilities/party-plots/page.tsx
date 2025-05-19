@@ -121,7 +121,8 @@ export default function PartyPlotsPage() {
     try {
       setLoading(true)
       setCurrentFilter(value)
-      const filteredVenues = await getVenuesByCapacityRange(value)
+      console.log("Filtering venues by capacity range:", value)
+      const filteredVenues = await getVenuesByCapacityRange(value.split("-")[0], value.split("-")[1])
       setVenues(filteredVenues)
     } catch (err) {
       console.error("Error filtering venues:", err)
@@ -161,14 +162,14 @@ export default function PartyPlotsPage() {
               columns={createVenueColumns(actions)}
               data={venues}
               searchField="name"
-              filterField="capacityRange"
-              filterOptions={[
-                { label: "All", value: "all" },
-                { label: "Small", value: "small" },
-                { label: "Medium", value: "medium" },
-                { label: "Large", value: "large" },
-              ]}
-              onFilterChange={handleFilterChange}
+              // filterField="capacity"
+              // filterOptions={[
+              //   { label: "All", value: "all-0"},
+              //   { label: "Small (< 500)", value: "0-500" },
+              //   { label: "Medium (500 - 1000)", value: "500-1000" },
+              //   { label: "Large (> 1000)", value: "1000-1500" },
+              // ]}
+              // onFilterChange={handleFilterChange}
               isLoading={loading}
             />
           )}

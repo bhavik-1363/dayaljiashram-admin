@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, ShieldCheck, RefreshCw } from "lucide-react"
+import { PlusCircle, ShieldCheck, RefreshCw, Upload } from "lucide-react"
 import { DataTable } from "@/components/admin/data-table"
 import { memberColumns, MemberActionsProvider, type Member } from "@/components/admin/columns/member-columns"
 import { AddMemberDialog } from "@/components/admin/add-member-dialog"
@@ -13,6 +13,7 @@ import { DeleteConfirmationDialog } from "@/components/admin/delete-confirmation
 import { useAuth } from "@/lib/firebase/auth-context"
 import { getMembersService } from "@/lib/firebase/services/members-service"
 import { useRouter } from "next/navigation"
+import { BulkUploadDialog } from "@/components/admin/bulk-upload-dialog"
 
 export default function MembersPage() {
   const { toast } = useToast()
@@ -26,6 +27,7 @@ export default function MembersPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [isBulkUploadDialogOpen, setIsBulkUploadDialogOpen] = useState(false)
 
   // Use a ref to prevent multiple fetch attempts
   const fetchAttemptedRef = useRef(false)
@@ -189,6 +191,10 @@ export default function MembersPage() {
             <PlusCircle className="h-4 w-4" />
             <span>Add Member</span>
           </Button>
+          <Button variant="outline" onClick={() => setIsBulkUploadDialogOpen(true)} className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            <span>Bulk Upload</span>
+          </Button>
         </div>
       </div>
 
@@ -251,6 +257,18 @@ export default function MembersPage() {
           />
         </>
       )}
+
+      <BulkUploadDialog
+        open={isBulkUploadDialogOpen}
+        onOpenChange={setIsBulkUploadDialogOpen}
+        onSuccess={(newMembers) => {
+          setMembers((prev) => [...newMembers, ...prev])
+          toast({
+            title: "Bulk upload successful",
+            description: `Added ${newMembers.length} new members.`,
+          })
+        }}
+      />
     </div>
   )
 }

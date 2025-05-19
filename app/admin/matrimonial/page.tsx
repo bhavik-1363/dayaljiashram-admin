@@ -144,7 +144,8 @@ export default function MatrimonialPage() {
 
   return (
     <ActionProvider>
-      <div className="flex flex-col gap-4 p-4 md:p-8">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <PageHeader
             title="Matrimonial Profiles"
@@ -199,6 +200,7 @@ export default function MatrimonialPage() {
           onAddProfile={handleAddProfile}
         />
       </div>
+    </div>
     </ActionProvider>
   )
 }

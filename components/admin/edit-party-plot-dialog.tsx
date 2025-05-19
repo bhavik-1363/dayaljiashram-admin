@@ -20,7 +20,10 @@ import { format } from "date-fns"
 import { Calendar } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getVenues } from "@/lib/firebase/services/venues-service"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import type { Venue } from "@/components/admin/columns/venue-columns"
 
 interface FormValues {
   plotName: string
@@ -31,6 +34,7 @@ interface FormValues {
   numberOfGuests: number
   additionalMessage: string
   amount: number
+  eventDate: string
 }
 
 interface EditPartyPlotDialogProps {
@@ -45,13 +49,20 @@ export function EditPartyPlotDialog({ partyPlot, open, onOpenChange, onUpdatePar
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("fullday")
   const [selectedStatus, setSelectedStatus] = useState<string>("pending")
+  const [venues, setVenues] = useState<Venue[]>([])
+  const [isLoadingVenues, setIsLoadingVenues] = useState(false)
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>()
+
+  // Watch the plotName value
+  const plotName = watch("plotName")
 
   // Initialize form when partyPlot changes
   useEffect(() => {
@@ -65,13 +76,32 @@ export function EditPartyPlotDialog({ partyPlot, open, onOpenChange, onUpdatePar
         numberOfGuests: partyPlot.numberOfGuests || 0,
         additionalMessage: partyPlot.additionalMessage || "",
         amount: partyPlot.amount || 0,
+        eventDate: partyPlot.eventDate || "",
       })
 
       setSelectedDate(partyPlot.eventDate ? new Date(partyPlot.eventDate) : undefined)
       setSelectedTimeSlot(partyPlot.timeSlot || "fullday")
       setSelectedStatus(partyPlot.status || "pending")
+      fetchVenues()
     }
   }, [partyPlot, open, reset])
+
+  const fetchVenues = async () => {
+    try {
+      setIsLoadingVenues(true)
+      const venuesList = await getVenues()
+      setVenues(venuesList)
+      setIsLoadingVenues(false)
+    } catch (error) {
+      console.error("Error fetching venues:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load party plot venues",
+        variant: "destructive",
+      })
+      setIsLoadingVenues(false)
+    }
+  }
 
   const onSubmit = (data: FormValues) => {
     if (!selectedDate) {
@@ -88,8 +118,6 @@ export function EditPartyPlotDialog({ partyPlot, open, onOpenChange, onUpdatePar
     }
 
     setIsSubmitting(true)
-
-    // Format the date to YYYY-MM-DD
     const formattedDate = format(selectedDate, "yyyy-MM-dd")
 
     // Create the updated party plot object
@@ -129,11 +157,28 @@ export function EditPartyPlotDialog({ partyPlot, open, onOpenChange, onUpdatePar
           <div className="space-y-4">
             <div>
               <Label htmlFor="plotName">Plot Name</Label>
-              <Input
-                id="plotName"
-                placeholder="Enter plot name"
-                {...register("plotName", { required: "Plot name is required" })}
-              />
+              <Select value={plotName} onValueChange={(value) => setValue("plotName", value, { shouldValidate: true })}>
+                <SelectTrigger id="plotName" className="w-full">
+                  <SelectValue placeholder="Select a party plot" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingVenues ? (
+                    <SelectItem value="loading" disabled>
+                      Loading venues...
+                    </SelectItem>
+                  ) : venues.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No venues available
+                    </SelectItem>
+                  ) : (
+                    venues.map((venue) => (
+                      <SelectItem key={venue.id} value={venue.name}>
+                        {venue.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
               {errors.plotName && <p className="text-sm text-red-500 mt-1">{errors.plotName.message}</p>}
             </div>
 
@@ -209,23 +254,24 @@ export function EditPartyPlotDialog({ partyPlot, open, onOpenChange, onUpdatePar
                   <CalendarComponent mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
                 </PopoverContent>
               </Popover>
+              {errors.eventDate && <p className="text-sm text-red-500 mt-1">{errors.eventDate.message}</p>}
               <p className="text-sm text-muted-foreground mt-1">The date when the event will take place.</p>
             </div>
 
             <div>
               <Label htmlFor="timeSlot">Time Slot</Label>
-              <select
-                id="timeSlot"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={selectedTimeSlot}
-                onChange={(e) => setSelectedTimeSlot(e.target.value)}
-              >
-                <option value="morning">Morning (8:00 AM - 12:00 PM)</option>
-                <option value="afternoon">Afternoon (12:00 PM - 4:00 PM)</option>
-                <option value="evening">Evening (4:00 PM - 8:00 PM)</option>
-                <option value="night">Night (8:00 PM - 12:00 AM)</option>
-                <option value="fullday">Full Day (8:00 AM - 12:00 AM)</option>
-              </select>
+              <Select value={selectedTimeSlot} onValueChange={setSelectedTimeSlot}>
+                <SelectTrigger id="timeSlot" className="w-full">
+                  <SelectValue placeholder="Select a time slot" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="morning">Morning (8:00 AM - 12:00 PM)</SelectItem>
+                  <SelectItem value="afternoon">Afternoon (12:00 PM - 4:00 PM)</SelectItem>
+                  <SelectItem value="evening">Evening (4:00 PM - 8:00 PM)</SelectItem>
+                  <SelectItem value="night">Night (8:00 PM - 12:00 AM)</SelectItem>
+                  <SelectItem value="fullday">Full Day (8:00 AM - 12:00 AM)</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="text-sm text-muted-foreground mt-1">The time slot when the venue is reserved.</p>
             </div>
 
@@ -280,16 +326,16 @@ export function EditPartyPlotDialog({ partyPlot, open, onOpenChange, onUpdatePar
 
             <div>
               <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-              >
-                <option value="confirmed">Confirmed</option>
-                <option value="pending">Pending</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue placeholder="Select booking status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="text-sm text-muted-foreground mt-1">Set the current status of this booking.</p>
             </div>
           </div>

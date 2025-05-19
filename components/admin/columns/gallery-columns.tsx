@@ -2,8 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, Eye, MoreHorizontal, Pencil, Trash } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ArrowUpDown, Eye, Pencil, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { ViewGalleryItemDialog } from "@/components/admin/view-gallery-item-dialog"
@@ -47,28 +46,20 @@ export const galleryColumns = ({
 
     return (
       <>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsViewOpen(true)}>
-              <Eye className="mr-2 h-4 w-4" />
-              View
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsDeleteOpen(true)}>
-              <Trash className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="icon" onClick={() => setIsViewOpen(true)}>
+            <Eye className="h-4 w-4" />
+            <span className="sr-only">View</span>
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setIsEditOpen(true)}>
+            <Pencil className="h-4 w-4" />
+            <span className="sr-only">Edit</span>
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setIsDeleteOpen(true)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+            <span className="sr-only">Delete</span>
+          </Button>
+        </div>
 
         <ViewGalleryItemDialog open={isViewOpen} onOpenChange={setIsViewOpen} item={item} />
 

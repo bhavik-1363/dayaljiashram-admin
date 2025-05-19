@@ -20,12 +20,11 @@ import { toast } from "@/components/ui/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
-import { CalendarIcon, Trash2, Upload, X } from "lucide-react"
+import { CalendarIcon, FileText, Star, Trash2, Upload, X } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { uploadProfileImage } from "@/lib/firebase/storage"
@@ -46,6 +45,7 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
   const [images, setImages] = useState<File[]>([])
   const [bioData, setBioData] = useState<File | null>(null)
   const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [defaultImageIndex, setDefaultImageIndex] = useState<number>(0)
   const [hobbies, setHobbies] = useState<string[]>([])
   const [dateOfBirth, setDateOfBirth] = useState<Date>(new Date(new Date().setFullYear(new Date().getFullYear() - 25)))
   const [gender, setGender] = useState<string>("male")
@@ -79,28 +79,43 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
       const birthDate = dateOfBirth
       const age = today.getFullYear() - birthDate.getFullYear()
 
-      // Upload profile images to Firebase Storage
-      let uploadedImageUrl = ""
+      // Upload all profile images to Firebase Storage
+      const uploadedImageUrls: string[] = []
+
       if (images.length > 0) {
-        // Upload the first image as the profile image
-        const mainImage = images[0]
-        uploadedImageUrl = await uploadProfileImage(
-          mainImage,
-          `matrimonial_profiles/${Date.now()}_${mainImage.name}`,
-          (progress) => {
-            setUploadProgress(progress)
-          },
-        )
+        // Upload each image and track progress
+        const totalProgress = 0
+
+        for (let i = 0; i < images.length; i++) {
+          const image = images[i]
+          const imageUrl = await uploadProfileImage(
+            image,
+            `matrimonial_profiles/${Date.now()}_${i}_${image.name}`,
+            (progress) => {
+              // Calculate overall progress across all images
+              const individualProgress = progress / images.length
+              const previousImagesProgress = (i / images.length) * 100
+              setUploadProgress(previousImagesProgress + individualProgress)
+            },
+          )
+          uploadedImageUrls.push(imageUrl)
+        }
       }
 
       // Upload profile biodata to Firebase Storage
-      let uploadedBioDataUrl = ""
+      let bioDataLink = ""
       if (bioData) {
-        // Upload the biodata
-        
-        uploadedBioDataUrl = await uploadProfileImage(
+        bioDataLink = await uploadProfileImage(
           bioData,
-          `matrimonial_bioData/${Date.now()}_${bioData.name}`
+          `matrimonial_bioData/${Date.now()}_${bioData.name}`,
+          (progress) => {
+            // Only show biodata upload progress after images are done
+            if (images.length > 0) {
+              setUploadProgress(90 + progress * 0.1) // Use the last 10% for PDF
+            } else {
+              setUploadProgress(progress)
+            }
+          },
         )
       }
 
@@ -132,19 +147,22 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
         familyInfo: data.familyInfo || "",
         partnerInfo: data.partnerInfo || "",
         verified,
-        hasUploadedPdf,
+        hasUploadedPdf: !!bioDataLink,
         status,
         createdAt: new Date().toISOString().split("T")[0],
+        defaultImageIndex: defaultImageIndex,
       }
 
-      // Only add imageUrl if it's not empty
-      if (uploadedImageUrl) {
-        newProfile.imageUrl = uploadedImageUrl
+      // Add images array if there are uploaded images
+      if (uploadedImageUrls.length > 0) {
+        newProfile.images = uploadedImageUrls
+        // Also set the first/default image as imageUrl for backward compatibility
+        newProfile.imageUrl = uploadedImageUrls[defaultImageIndex]
       }
 
-      // Only add bioData if it's not empty
-      if (uploadedBioDataUrl) {
-        newProfile.bioDataLink = uploadedBioDataUrl
+      // Add bioData link if it exists
+      if (bioDataLink) {
+        newProfile.bioDataLink = bioDataLink
       }
 
       // Add alternatePhone only if it exists
@@ -182,6 +200,7 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
     setImages([])
     setBioData(null)
     setImageUrls([])
+    setDefaultImageIndex(0)
     setHobbies([])
     setDateOfBirth(new Date(new Date().setFullYear(new Date().getFullYear() - 25)))
     setGender("male")
@@ -207,25 +226,41 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
 
     const newImages: File[] = []
     const newImageUrls: string[] = []
+    let hasErrors = false
 
     Array.from(files).forEach((file) => {
-      if (images.length + newImages.length >= MAX_IMAGES) return
+      // Check if adding this file would exceed the maximum
+      if (images.length + newImages.length >= MAX_IMAGES) {
+        if (!hasErrors) {
+          toast({
+            title: "Maximum images reached",
+            description: `You can only upload up to ${MAX_IMAGES} images.`,
+            variant: "destructive",
+          })
+          hasErrors = true
+        }
+        return
+      }
 
+      // Check file size
       if (file.size > MAX_FILE_SIZE) {
         toast({
           title: "File too large",
           description: `${file.name} is larger than 5MB.`,
           variant: "destructive",
         })
+        hasErrors = true
         return
       }
 
+      // Check file type
       if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
         toast({
           title: "Invalid file type",
-          description: `${file.name} is not a supported image format.`,
+          description: `${file.name} is not a supported image format (JPG, PNG, WebP).`,
           variant: "destructive",
         })
+        hasErrors = true
         return
       }
 
@@ -233,8 +268,17 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
       newImageUrls.push(URL.createObjectURL(file))
     })
 
-    setImages([...images, ...newImages])
-    setImageUrls([...imageUrls, ...newImageUrls])
+    if (newImages.length > 0) {
+      const updatedImages = [...images, ...newImages]
+      const updatedUrls = [...imageUrls, ...newImageUrls]
+      setImages(updatedImages)
+      setImageUrls(updatedUrls)
+
+      // If this is the first image, set it as default
+      if (images.length === 0 && newImages.length > 0) {
+        setDefaultImageIndex(0)
+      }
+    }
   }
 
   const handleBioDataUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -243,10 +287,10 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
 
     const file = files[0]
 
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > MAX_FILE_SIZE * 3) {
       toast({
         title: "File too large",
-        description: `${file.name} is larger than 5MB.`,
+        description: `${file.name} is larger than 15MB.`,
         variant: "destructive",
       })
       return
@@ -263,21 +307,53 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
 
     setBioData(file)
     setHasUploadedPdf(true)
+
+    toast({
+      title: "PDF uploaded",
+      description: `${file.name} has been added to the profile.`,
+    })
   }
 
   const removeImage = (index: number) => {
     const newImages = [...images]
     const newImageUrls = [...imageUrls]
+
+    // Revoke the object URL to prevent memory leaks
+    URL.revokeObjectURL(newImageUrls[index])
+
     newImages.splice(index, 1)
     newImageUrls.splice(index, 1)
+
     setImages(newImages)
     setImageUrls(newImageUrls)
+
+    // If we're removing the default image, reset the default to the first image
+    if (index === defaultImageIndex) {
+      setDefaultImageIndex(0)
+    }
+    // If we're removing an image before the default, adjust the default index
+    else if (index < defaultImageIndex) {
+      setDefaultImageIndex(defaultImageIndex - 1)
+    }
+  }
+
+  const setAsDefaultImage = (index: number) => {
+    setDefaultImageIndex(index)
+    toast({
+      title: "Default image set",
+      description: "This image will be displayed as the main profile photo.",
+    })
   }
 
   const removeBioData = () => {
     setBioData(null)
     setHasUploadedPdf(false)
     if (pdfInputRef.current) pdfInputRef.current.value = ""
+
+    toast({
+      title: "PDF removed",
+      description: "The PDF has been removed from the profile.",
+    })
   }
 
   const addHobby = (hobby: string) => {
@@ -323,27 +399,49 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
             <TabsContent value="basic" className="space-y-4 pt-4">
               <div className="space-y-4">
                 <div className="flex flex-col space-y-2">
-                  <h3 className="text-sm font-medium">Profile Images (Max 5)</h3>
+                  <h3 className="text-sm font-medium">Profile Images (Max {MAX_IMAGES})</h3>
                   <div className="flex flex-wrap gap-4">
                     {imageUrls.map((url, index) => (
                       <div key={index} className="relative">
-                        <Avatar className="h-20 w-20">
-                          <AvatarImage src={url || "/placeholder.svg"} alt={`Profile image ${index + 1}`} />
-                          <AvatarFallback>IMG</AvatarFallback>
-                        </Avatar>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                          onClick={() => removeImage(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                        <div className="relative h-20 w-20 rounded-md overflow-hidden border border-border">
+                          <img
+                            src={url || "/placeholder.svg"}
+                            alt={`Profile image ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                          {index === defaultImageIndex && (
+                            <div className="absolute top-1 right-1">
+                              <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="absolute -top-2 -right-2 flex gap-1">
+                          {index !== defaultImageIndex && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-6 w-6 rounded-full bg-background border-yellow-400"
+                              onClick={() => setAsDefaultImage(index)}
+                              title="Set as default image"
+                            >
+                              <Star className="h-3 w-3 text-yellow-400" />
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="h-6 w-6 rounded-full"
+                            onClick={() => removeImage(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
-                    {images.length < MAX_IMAGES && (
-                      <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border border-dashed border-gray-300 hover:border-gray-400">
+                    {imageUrls.length < MAX_IMAGES && (
+                      <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border border-dashed border-gray-300 hover:border-gray-400">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -357,7 +455,8 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Upload up to 5 images. Each image should be less than 5MB.
+                    Upload up to {MAX_IMAGES} images. Each image should be less than 5MB. Click the star icon to set an
+                    image as the default profile photo.
                   </p>
                 </div>
 
@@ -365,7 +464,10 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
                   <h3 className="text-sm font-medium">Bio-Data (PDF)</h3>
                   {bioData ? (
                     <div className="flex items-center justify-between rounded-md border border-gray-200 p-2">
-                      <span className="text-sm">{bioData.name}</span>
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-blue-500" />
+                        <span className="text-sm">{bioData.name}</span>
+                      </div>
                       <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={removeBioData}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -381,7 +483,7 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
                       />
                       <div className="flex flex-col items-center">
                         <Upload className="mb-2 h-6 w-6 text-gray-400" />
-                        <span className="text-sm text-gray-500">Upload PDF (Max 5MB)</span>
+                        <span className="text-sm text-gray-500">Upload PDF (Max 15MB)</span>
                       </div>
                     </label>
                   )}
@@ -839,7 +941,7 @@ export function AddMatrimonialProfileDialog({ open, onOpenChange, onAddProfile }
 
           {isSubmitting && uploadProgress > 0 && (
             <div className="w-full">
-              <div className="text-sm mb-1">Uploading profile image: {uploadProgress}%</div>
+              <div className="text-sm mb-1">Uploading files: {Math.round(uploadProgress)}%</div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div className="bg-primary h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
               </div>

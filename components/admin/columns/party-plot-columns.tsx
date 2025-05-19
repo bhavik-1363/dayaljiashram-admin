@@ -1,24 +1,11 @@
 "use client"
 
-import type React from "react"
-
 import type { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, ArrowUpDown, Eye, Edit, Trash } from "lucide-react"
+import { ArrowUpDown, Eye, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { useActions } from "@/components/admin/action-provider"
-import { useState } from "react"
-import { ViewPartyPlotDialog } from "@/components/admin/view-party-plot-dialog"
-import { EditPartyPlotDialog } from "@/components/admin/edit-party-plot-dialog"
+import { createContext, type ReactNode } from "react"
 
 export type PartyPlot = {
   id: string
@@ -36,65 +23,65 @@ export type PartyPlot = {
   status: "confirmed" | "pending" | "cancelled"
 }
 
-export const PartyPlotActionsProvider = ({ children }: { children: React.ReactNode }) => {
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [selectedPartyPlot, setSelectedPartyPlot] = useState<PartyPlot | null>(null)
-  const { handleDelete } = useActions()
-
-  const openViewDialog = (partyPlot: PartyPlot) => {
-    setSelectedPartyPlot(partyPlot)
-    setViewDialogOpen(true)
-  }
-
-  const openEditDialog = (partyPlot: PartyPlot) => {
-    setSelectedPartyPlot(partyPlot)
-    setEditDialogOpen(true)
-  }
-
-  const handleDeletePartyPlot = (partyPlot: PartyPlot) => {
-    handleDelete(partyPlot.id, partyPlot.plotName, "Party Plot")
-  }
-
-  return (
-    <>
-      {typeof children === "function" ? children({ openViewDialog, openEditDialog, handleDeletePartyPlot }) : children}
-
-      {selectedPartyPlot && (
-        <>
-          <ViewPartyPlotDialog partyPlot={selectedPartyPlot} open={viewDialogOpen} onOpenChange={setViewDialogOpen} />
-          <EditPartyPlotDialog partyPlot={selectedPartyPlot} open={editDialogOpen} onOpenChange={setEditDialogOpen} />
-        </>
-      )}
-    </>
-  )
-}
-
-export function createPartyPlotColumns(actions: {
+interface PartyPlotActionsContextType {
   openViewDialog: (partyPlot: PartyPlot) => void
   openEditDialog: (partyPlot: PartyPlot) => void
   handleDeletePartyPlot: (partyPlot: PartyPlot) => void
-}): ColumnDef<PartyPlot>[] {
+}
+
+const PartyPlotActionsContext = createContext<PartyPlotActionsContextType | undefined>(undefined)
+
+interface PartyPlotActionsProviderProps {
+  children: (context: PartyPlotActionsContextType) => ReactNode
+  onDelete?: (partyPlot: PartyPlot) => void
+  onUpdate?: (updatedPartyPlot: PartyPlot) => void
+}
+
+export function PartyPlotActionsProvider({ children, onDelete, onUpdate }: PartyPlotActionsProviderProps): ReactNode {
+  const openViewDialog = (partyPlot: PartyPlot) => {
+    console.log("View party plot:", partyPlot)
+  }
+
+  const openEditDialog = (partyPlot: PartyPlot) => {
+    console.log("Edit party plot:", partyPlot)
+  }
+
+  const handleDeletePartyPlot = (partyPlot: PartyPlot) => {
+    console.log("Delete party plot:", partyPlot)
+  }
+
+  const contextValue: PartyPlotActionsContextType = {
+    openViewDialog,
+    openEditDialog,
+    handleDeletePartyPlot,
+  }
+
+  return (
+    <PartyPlotActionsContext.Provider value={contextValue}>{children(contextValue)}</PartyPlotActionsContext.Provider>
+  )
+}
+
+export function createPartyPlotColumns(actions: PartyPlotActionsContextType): ColumnDef<PartyPlot>[] {
   return [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
+    // {
+    //   id: "select",
+    //   header: ({ table }) => (
+    //     <Checkbox
+    //       checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+    //       aria-label="Select all"
+    //     />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <Checkbox
+    //       checked={row.getIsSelected()}
+    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
+    //       aria-label="Select row"
+    //     />
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    // },
     {
       accessorKey: "plotName",
       header: ({ column }) => {
@@ -159,36 +146,19 @@ export function createPartyPlotColumns(actions: {
             </Button>
 
             <Button variant="ghost" size="icon" onClick={() => actions.openEditDialog(partyPlot)}>
-              <Edit className="h-4 w-4" />
+              <Pencil className="h-4 w-4" />
               <span className="sr-only">Edit</span>
             </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(partyPlot.id)}>Copy ID</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => actions.openViewDialog(partyPlot)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  <span>View details</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => actions.openEditDialog(partyPlot)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  <span>Edit</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={() => actions.handleDeletePartyPlot(partyPlot)}>
-                  <Trash className="mr-2 h-4 w-4" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => actions.handleDeletePartyPlot(partyPlot)}
+              className="text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
           </div>
         )
       },

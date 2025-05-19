@@ -1,106 +1,127 @@
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { storage } from "./firebase";
 
-export const uploadFile = async (
-  filePath: string,
-  file: File
-): Promise<string> => {
-  try {
-    if (!storage) {
-      throw new Error("Firebase Storage is not initialized");
-    }
-
-    const storageRef = ref(storage, filePath);
-    const snapshot = await uploadBytesResumable(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading file to Firebase Storage:", error);
-    throw error;
-  }
-};
-
-export const uploadProfileImage = async (
+// Upload a file to Firebase Storage
+export async function uploadFile(
+  path: string,
   file: File,
-  filePath: string,
-  progressCallback?: (progress: number) => void
-): Promise<string> => {
+  progressCallback?: (progress: number) => void,
+): Promise<string> {
+  const storageRef = ref(storage, path)
+  const uploadTask = uploadBytesResumable(storageRef, file)
+
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        if (progressCallback) {
+          progressCallback(progress)
+        }
+      },
+      (error) => {
+        console.error("Error uploading file:", error)
+        reject(error)
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(storageRef)
+          resolve(downloadURL)
+        } catch (error) {
+          console.error("Error getting download URL:", error)
+          reject(error)
+        }
+      },
+    )
+  })
+}
+// Upload a profile image and return the download URL
+export async function uploadProfileImage(
+  file: File,
+  path: string,
+  onProgress?: (progress: number) => void,
+): Promise<string> {
   try {
-    if (!storage) {
-      throw new Error("Firebase Storage is not initialized");
-    }
+    const storageRef = ref(storage, path)
+    const uploadTask = uploadBytesResumable(storageRef, file)
 
-    const storageRef = ref(storage, filePath);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    return new Promise<string>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       uploadTask.on(
         "state_changed",
         (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          progressCallback?.(progress);
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          if (onProgress) {
+            onProgress(progress)
+          }
         },
         (error) => {
-          console.error("Upload error:", error);
-          reject(error);
+          console.error("Error uploading file:", error)
+          reject(error)
         },
         async () => {
-          const downloadURL = await getDownloadURL(storageRef);
-          resolve(downloadURL);
-        }
-      );
-    });
+          try {
+            const downloadURL = await getDownloadURL(storageRef)
+            resolve(downloadURL)
+          } catch (error) {
+            console.error("Error getting download URL:", error)
+            reject(error)
+          }
+        },
+      )
+    })
   } catch (error) {
-    console.error("Error uploading profile image to Firebase Storage:", error);
-    throw error;
+    console.error("Error in uploadProfileImage:", error)
+    throw error
   }
-};
+}
 
-export const uploadNewsEventMedia = async (
-  filePath: string,
-  file: File,
-  progressCallback?: (progress: number) => void
-): Promise<string> => {
+// Delete a file from storage
+export async function deleteFile(path: string): Promise<void> {
   try {
-    if (!storage) {
-      throw new Error("Firebase Storage is not initialized");
-    }
-
-    const storageRef = ref(storage, filePath);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    return new Promise<string>((resolve, reject) => {
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          progressCallback?.(progress);
-        },
-        (error) => {
-          console.error("Upload error:", error);
-          reject(error);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(storageRef);
-          resolve(downloadURL);
-        }
-      );
-    });
+    const storageRef = ref(storage, path)
+    await deleteObject(storageRef)
   } catch (error) {
-    console.error(
-      "Error uploading news event media to Firebase Storage:",
-      error
-    );
-    throw error;
+    console.error("Error deleting file:", error)
+    throw error
   }
-};
+}
 
-export const generateFilePath = (
-  folderName: string,
-  fileName: string
-): string => {
+
+export async function uploadNewsEventMedia(
+  path: string,
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<string> {
+  const storageRef = ref(storage, path)
+  const uploadTask = uploadBytesResumable(storageRef, file)
+
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        if (onProgress) {
+          onProgress(progress)
+        }
+      },
+      (error) => {
+        console.error("Error uploading file:", error)
+        reject(error)
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(storageRef)
+          resolve(downloadURL)
+        } catch (error) {
+          console.error("Error getting download URL:", error)
+          reject(error)
+        }
+      },
+    )
+  })
+}
+
+export const generateFilePath = (folderName: string, fileName: string): string => {
   const timestamp = new Date().getTime();
   const randomString = Math.random().toString(36).substring(2, 15);
   const cleanFileName = fileName.replace(/[^a-zA-Z0-9.]/g, "_");

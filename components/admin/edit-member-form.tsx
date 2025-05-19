@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { AchievementList } from "@/components/admin/achievement-list"
-import { FirebaseImageUpload } from "@/components/admin/firebase-image-upload"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ImageUpload } from "./image-upload"
+import { getMembersService } from "@/lib/firebase/services/members-service"
+import { useToast } from "@/components/ui/use-toast"
 
 // Helper function to safely format dates
 const safeFormatDate = (dateValue: any): string => {
@@ -38,6 +40,7 @@ const safeFormatDate = (dateValue: any): string => {
 export function EditMemberForm({ member, onSubmit, onCancel, fields = [] }) {
   const [formData, setFormData] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (member) {
@@ -51,10 +54,48 @@ export function EditMemberForm({ member, onSubmit, onCancel, fields = [] }) {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleImageChange = (url) => {
-    // Use empty string instead of undefined for imageUrl
-    setFormData((prev) => ({ ...prev, imageUrl: url || "" }))
-  }
+  // const handleImageChange = (url) => {
+  //   // Use empty string instead of undefined for imageUrl
+  //   setFormData((prev) => ({ ...prev, imageUrl: url || "" }))
+  // }
+
+
+    const handleImageChange = async (value: string | File) => {
+      try {
+        // If we received a File object, upload it to Firebase Storage
+        if (value instanceof File) {
+          // setIsUploadingImage(true)
+  
+          const membersService = getMembersService()
+          const downloadURL = await membersService.uploadProfileImage(value)
+  
+          setFormData({
+            ...formData,
+            imageUrl: downloadURL,
+          })
+  
+          toast({
+            title: "Image uploaded successfully",
+            description: "Profile image has been uploaded.",
+          })
+        } else {
+          // If we received a string (URL or empty string), just update the state
+          setFormData({
+            ...formData,
+            imageUrl: value,
+          })
+        }
+      } catch (error) {
+        console.error("Error handling image:", error)
+        toast({
+          title: "Upload failed",
+          description: "There was a problem uploading your image.",
+          variant: "destructive",
+        })
+      } finally {
+        // setIsUploadingImage(false)
+      }
+    }
 
   const handleAchievementsChange = (achievements) => {
     setFormData((prev) => ({ ...prev, achievements: achievements || [] }))
@@ -112,11 +153,7 @@ export function EditMemberForm({ member, onSubmit, onCancel, fields = [] }) {
               required={field.required}
             />
           ) : field.type === "image" ? (
-            <FirebaseImageUpload
-              folder="committee"
-              onImageUploaded={handleImageChange}
-              initialImage={formData.imageUrl || ""}
-            />
+            <ImageUpload value={formData.imageUrl} onChange={handleImageChange} folderName="committee" />
           ) : field.type === "achievements" ? (
             <AchievementList achievements={formData.achievements || []} onChange={handleAchievementsChange} />
           ) : field.type === "date" ? (

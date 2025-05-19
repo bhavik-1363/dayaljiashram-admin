@@ -48,7 +48,7 @@ export function LoginForm() {
         <Input
           id="email"
           type="email"
-          placeholder="your.email@example.com"
+          placeholder="your.email@dayaljiashram.org"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -57,21 +57,21 @@ export function LoginForm() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
-          <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+          {/* <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
             Forgot password?
-          </Link>
+          </Link> */}
         </div>
         <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Logging in..." : "Login"}
       </Button>
-      <div className="text-center text-sm">
+      {/* <div className="text-center text-sm">
         Don&apos;t have an account?{" "}
         <Link href="/register" className="font-medium text-primary hover:underline">
           Register
         </Link>
-      </div>
+      </div> */}
     </form>
   )
 }

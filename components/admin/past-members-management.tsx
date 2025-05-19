@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,6 +21,7 @@ import type { CommitteeMember } from "@/lib/firebase/services/committee-service"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { useAction } from "./action-provider"
 
 // Map the UI tab values to the database type values
 const tabToTypeMap = {
@@ -42,6 +43,8 @@ export function PastMembersManagement() {
   const [selectedMember, setSelectedMember] = useState<CommitteeMember | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { confirmAction } = useAction()
+  const { toast } = useToast()
 
   const fetchPastMembersByType = async (type: string, tabKey: string) => {
     try {
@@ -133,22 +136,22 @@ export function PastMembersManagement() {
     }
   }
 
-  const handleDeleteMember = async () => {
-    if (!selectedMember) return
+  const deleteMember = async (member) => {
+    if (!member) return
 
     try {
-      await deleteCommitteeMember(selectedMember.id)
+      await deleteCommitteeMember(member.id)
 
       setPastMembers({
         ...pastMembers,
-        [activeTab]: pastMembers[activeTab].filter((member) => member.id !== selectedMember.id),
+        [activeTab]: pastMembers[activeTab].filter((members) => members.id !== member.id),
       })
 
       setIsDeleteDialogOpen(false)
 
       toast({
         title: "Member Removed",
-        description: `${selectedMember.name} has been removed from the past ${getSingularTitle(activeTab)}.`,
+        description: `${member.name} has been removed from the past ${getSingularTitle(activeTab)}.`,
       })
     } catch (error) {
       console.error("Error deleting past member:", error)
@@ -165,9 +168,18 @@ export function PastMembersManagement() {
     setIsEditDialogOpen(true)
   }
 
-  const openDeleteDialog = (member) => {
+  const handleDeleteMember = (member) => {
     setSelectedMember(member)
-    setIsDeleteDialogOpen(true)
+    // setIsDeleteDialogOpen(true)
+    confirmAction({
+      title: "Delete Past Committee Member",
+      description: `Are you sure you want to delete ${member?.name}? This action cannot be undone.`,
+      action: () => {
+        console.log("Deleting profile:", member?.id)
+        // Call the onUpdateProfile callback if provided
+        deleteMember(member)
+      },
+    })
   }
 
   const getTabTitle = (tab) => {
@@ -285,7 +297,7 @@ export function PastMembersManagement() {
                         <Pencil className="h-4 w-4" />
                         <span className="sr-only">Edit</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(member)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteMember(member)}>
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Delete</span>
                       </Button>
@@ -337,13 +349,13 @@ export function PastMembersManagement() {
             </DialogContent>
           </Dialog>
 
-          <DeleteConfirmationDialog
+          {/* <DeleteConfirmationDialog
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
             onConfirm={handleDeleteMember}
             itemName={selectedMember.name}
             itemType={`past ${getSingularTitle(activeTab)}`}
-          />
+          /> */}
         </>
       )}
     </div>

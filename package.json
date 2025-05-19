@@ -59,7 +59,8 @@
         "vaul": "^0.9.6",
         "zod": "latest",
         "@tanstack/react-table": "latest",
-        "firebase": "latest"
+        "firebase": "latest",
+        "xlsx": "latest"
     },
     "devDependencies": {
         "@types/node": "^22",

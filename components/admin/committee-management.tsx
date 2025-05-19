@@ -20,6 +20,7 @@ import type { CommitteeMember } from "@/lib/firebase/services/committee-service"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { useActions } from "./action-provider"
 
 export function CommitteeManagement() {
   const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([])
@@ -29,6 +30,7 @@ export function CommitteeManagement() {
   const [selectedMember, setSelectedMember] = useState<CommitteeMember | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { confirmAction } = useActions()
 
   useEffect(() => {
     const fetchCommitteeMembers = async () => {
@@ -102,18 +104,18 @@ export function CommitteeManagement() {
     }
   }
 
-  const handleDeleteMember = async () => {
-    if (!selectedMember) return
+  const deleteMember = async (member) => {
+    if (!member) return
 
     try {
-      await deleteCommitteeMember(selectedMember.id)
+      await deleteCommitteeMember(member.id)
 
-      setCommitteeMembers(committeeMembers.filter((member) => member.id !== selectedMember.id))
-      setIsDeleteDialogOpen(false)
+      setCommitteeMembers(committeeMembers.filter((members) => members.id !== member.id))
+      // setIsDeleteDialogOpen(false)
 
       toast({
         title: "Member Removed",
-        description: `${selectedMember.name} has been removed from the committee.`,
+        description: `${member.name} has been removed from the committee.`,
       })
     } catch (error) {
       console.error("Error deleting committee member:", error)
@@ -130,9 +132,18 @@ export function CommitteeManagement() {
     setIsEditDialogOpen(true)
   }
 
-  const openDeleteDialog = (member) => {
+  const handleDeleteMember = (member) => {
     setSelectedMember(member)
-    setIsDeleteDialogOpen(true)
+    // setIsDeleteDialogOpen(true)
+    confirmAction({
+          title: "Delete Committee Member",
+          description: `Are you sure you want to delete ${member?.name}? This action cannot be undone.`,
+          action: () => {
+            console.log("Deleting profile:", member?.id)
+            // Call the onUpdateProfile callback if provided
+            deleteMember(member)
+          },
+        })
   }
 
   return (
@@ -213,7 +224,7 @@ export function CommitteeManagement() {
                         <Pencil className="h-4 w-4" />
                         <span className="sr-only">Edit</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(member)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteMember(member)}>
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Delete</span>
                       </Button>
@@ -273,13 +284,13 @@ export function CommitteeManagement() {
             </DialogContent>
           </Dialog>
 
-          <DeleteConfirmationDialog
+          {/* <DeleteConfirmationDialog
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
             onConfirm={handleDeleteMember}
             itemName={selectedMember.name}
             itemType="committee member"
-          />
+          /> */}
         </>
       )}
     </div>

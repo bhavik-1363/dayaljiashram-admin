@@ -85,13 +85,16 @@ export default function MemberVerificationPage() {
               Back to Members
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold tracking-tight">Pending Verifications</h1>
         </div>
 
         <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
+      </div>
+
+      <div className="flex items-center justify-between">
+      <h1 className="text-3xl font-bold tracking-tight">Pending Verifications</h1>
       </div>
 
       {error && (

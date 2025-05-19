@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { AddMemberForm } from "@/components/admin/add-member-form"
@@ -20,6 +20,7 @@ import type { CommitteeMember } from "@/lib/firebase/services/committee-service"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { useAction } from "./action-provider"
 
 export function TrusteesManagement() {
   const [trustees, setTrustees] = useState<CommitteeMember[]>([])
@@ -30,6 +31,8 @@ export function TrusteesManagement() {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { confirmAction } = useAction()
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchTrustees = async () => {
@@ -103,18 +106,18 @@ export function TrusteesManagement() {
     }
   }
 
-  const handleDeleteTrustee = async () => {
-    if (!selectedTrustee) return
+  const deleteTrustee = async (trustee) => {
+    if (!trustee) return
 
     try {
-      await deleteCommitteeMember(selectedTrustee.id)
+      await deleteCommitteeMember(trustee.id)
 
-      setTrustees(trustees.filter((trustee) => trustee.id !== selectedTrustee.id))
-      setIsDeleteDialogOpen(false)
+      setTrustees(trustees.filter((trustees) => trustees.id !== trustee.id))
+      // setIsDeleteDialogOpen(false)
 
       toast({
         title: "Trustee Removed",
-        description: `${selectedTrustee.name} has been removed from the trustees.`,
+        description: `${trustee.name} has been removed from the trustees.`,
       })
     } catch (error) {
       console.error("Error deleting trustee:", error)
@@ -131,9 +134,18 @@ export function TrusteesManagement() {
     setIsEditDialogOpen(true)
   }
 
-  const openDeleteDialog = (trustee) => {
+  const handleDeleteTrustee = (trustee) => {
     setSelectedTrustee(trustee)
-    setIsDeleteDialogOpen(true)
+    // setIsDeleteDialogOpen(true)
+    confirmAction({
+      title: "Delete Trustee",
+      description: `Are you sure you want to delete ${trustee?.name}? This action cannot be undone.`,
+      action: () => {
+        console.log("Deleting profile:", trustee?.id)
+        // Call the onUpdateProfile callback if provided
+        deleteTrustee(trustee)
+      },
+    })
   }
 
   const toggleRowExpand = (id) => {
@@ -220,7 +232,7 @@ export function TrusteesManagement() {
                         <Pencil className="h-4 w-4" />
                         <span className="sr-only">Edit</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(trustee)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTrustee(trustee)}>
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Delete</span>
                       </Button>
@@ -314,13 +326,13 @@ export function TrusteesManagement() {
             </DialogContent>
           </Dialog>
 
-          <DeleteConfirmationDialog
+          {/* <DeleteConfirmationDialog
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
             onConfirm={handleDeleteTrustee}
             itemName={selectedTrustee.name}
             itemType="trustee"
-          />
+          /> */}
         </>
       )}
     </div>

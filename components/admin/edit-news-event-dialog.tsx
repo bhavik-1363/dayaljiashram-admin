@@ -27,7 +27,7 @@ import type { NewsEvent } from "@/components/admin/columns/news-event-columns"
 import { uploadNewsEventMedia } from "@/lib/firebase/storage"
 import { Progress } from "@/components/ui/progress"
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 
 interface EditNewsEventDialogProps {
   newsEvent: NewsEvent | null

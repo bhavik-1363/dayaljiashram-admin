@@ -13,7 +13,7 @@ const mockVenues: Venue[] = [
     name: "Royal Garden Party Plot",
     description:
       "A luxurious venue with beautiful gardens and modern amenities, perfect for weddings and large gatherings.",
-    capacity: "500 people",
+    capacity: "500",
     capacityRange: "large",
     area: "15,000 sq ft",
     price: "₹75,000 per day",
@@ -91,7 +91,7 @@ const mockVenues: Venue[] = [
     name: "Riverside Banquet Hall",
     description:
       "An elegant banquet hall with a beautiful view of the river, ideal for corporate events and medium-sized gatherings.",
-    capacity: "300 people",
+    capacity: "300",
     capacityRange: "medium",
     area: "8,000 sq ft",
     price: "₹50,000 per day",
@@ -337,22 +337,23 @@ export async function uploadVenueImage(
 }
 
 // Function to get venues by capacity range
-export async function getVenuesByCapacityRange(capacityRange: string): Promise<Venue[]> {
+export async function getVenuesByCapacityRange(minCapacity: string, maxCapacity: string): Promise<Venue[]> {
   // Check if we should use mock data
   if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true") {
-    if (capacityRange === "all") {
+    if (minCapacity === "all") {
       return mockVenues
     }
-    return mockVenues.filter((venue) => venue.capacityRange === capacityRange)
+    return mockVenues.filter((venue) => venue.capacity >= minCapacity && venue.capacity <= maxCapacity)
   }
 
   try {
-    if (capacityRange === "all") {
+    if (minCapacity === "all") {
       return getVenues()
     }
+    console.log(`Fetching venues with capacity between ${minCapacity} and ${maxCapacity}`)
 
     const venuesCollection = collection(db, COLLECTION_NAME)
-    const q = query(venuesCollection, where("capacityRange", "==", capacityRange))
+    const q = query(venuesCollection, where("capacity", ">=", minCapacity), where("capacity", "<=", maxCapacity))
     const venuesSnapshot = await getDocs(q)
 
     const venues: Venue[] = []
@@ -362,7 +363,7 @@ export async function getVenuesByCapacityRange(capacityRange: string): Promise<V
 
     return venues
   } catch (error) {
-    console.error(`Error fetching venues by capacity range ${capacityRange}:`, error)
-    return mockVenues.filter((venue) => venue.capacityRange === capacityRange)
+    console.error(`Error fetching venues by capacity range ${minCapacity} to ${maxCapacity}:`, error)
+    return mockVenues.filter((venue) => venue.capacity >= minCapacity && venue.capacity <= maxCapacity)
   }
 }

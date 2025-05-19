@@ -231,10 +231,12 @@ export function FirebaseImageUpload({
           </Button>
         </div>
       ) : (
+        <>
         <div className="flex flex-col items-center justify-center p-4 text-center">
           <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-          <Label className="text-sm text-muted-foreground cursor-pointer">Drag & drop or click to upload</Label>
+          <Label className="text-sm text-muted-foreground cursor-pointer">Click to upload</Label>
         </div>
+        </>
       )}
     </div>
   )
