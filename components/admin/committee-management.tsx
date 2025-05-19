@@ -248,6 +248,8 @@ export function CommitteeManagement() {
             fields={[
               { name: "name", label: "Name", type: "text", required: true },
               { name: "position", label: "Position", type: "text", required: true },
+              { name: "memberType", label: "MemberType", type: "dropdown", required: true, options: ["core", "key", "member"]},
+              { name: "row_index", label: "Order", type: "number", required: true},
               { name: "email", label: "Email", type: "email", required: true },
               { name: "phone", label: "Phone", type: "tel", required: true },
               { name: "bio", label: "Bio", type: "textarea", required: false },
@@ -273,6 +275,8 @@ export function CommitteeManagement() {
                 fields={[
                   { name: "name", label: "Name", type: "text", required: true },
                   { name: "position", label: "Position", type: "text", required: true },
+                  { name: "memberType", label: "MemberType", type: "dropdown", required: true, options: ["core", "key", "member"]},
+                  { name: "row_index", label: "Order", type: "number", required: true},
                   { name: "email", label: "Email", type: "email", required: true },
                   { name: "phone", label: "Phone", type: "tel", required: true },
                   { name: "bio", label: "Bio", type: "textarea", required: false },

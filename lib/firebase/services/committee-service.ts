@@ -20,6 +20,7 @@ export interface CommitteeMember {
   name: string
   position: string
   type: "committee" | "trustee" | "past_president" | "past_trustee" | "past_secretary"
+  memberType?: "core" | "key"| "member" |string
   email?: string
   phone?: string
   bio?: string
@@ -29,6 +30,7 @@ export interface CommitteeMember {
   joinDate?: string
   endDate?: string
   isActive: boolean
+  row_index?: number
 }
 
 // Get all committee members
@@ -53,6 +55,8 @@ export async function getCommitteeMembers(): Promise<CommitteeMember[]> {
         joinDate: data.joinDate,
         endDate: data.endDate,
         isActive: data.isActive !== undefined ? data.isActive : true,
+        memberType: data.memberType || "member",
+        row_index: data.row_index,
       }
     })
 
@@ -88,6 +92,8 @@ export async function getCommitteeMembersByType(type: string): Promise<Committee
         joinDate: data.joinDate,
         endDate: data.endDate,
         isActive: data.isActive !== undefined ? data.isActive : true,
+        memberType: data.memberType || "member",
+        row_index: data.row_index,
       }
     })
 
@@ -136,6 +142,8 @@ export async function getCommitteeMemberById(id: string): Promise<CommitteeMembe
         joinDate: data.joinDate,
         endDate: data.endDate,
         isActive: data.isActive !== undefined ? data.isActive : true,
+        memberType: data.memberType || "member",
+        row_index: data.row_index,
       }
     }
     return null
@@ -219,6 +227,8 @@ export async function getActiveCommitteeMembers(): Promise<CommitteeMember[]> {
         joinDate: data.joinDate,
         endDate: data.endDate,
         isActive: true,
+        memberType: data.memberType || "member",
+        row_index: data.row_index,
       }
     })
 

@@ -17,13 +17,13 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMembersService } from "@/lib/firebase/services/members-service";
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "./image-upload";
 
 export function AddMemberForm({ onSubmit, onCancel, fields = [] }) {
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast()
+  const { toast } = useToast();
 
   const handleChange = e => {
     const { name, value } = e.target;
@@ -121,39 +121,68 @@ export function AddMemberForm({ onSubmit, onCancel, fields = [] }) {
                   required={field.required}
                 />
               : field.type === "image"
-                ? <ImageUpload value={formData.imageUrl} onChange={handleImageChange} folderName="committee" />
-                : field.type === "achievements"
-                  ? <AchievementList
-                      achievements={formData.achievements || []}
-                      onChange={handleAchievementsChange}
-                    />
-                  : field.type === "date"
-                    ? <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !formData[field.name] && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {formData[field.name]
-                              ? format(formData[field.name], "PPP")
-                              : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={formData[field.name]}
-                            onSelect={date =>
-                              handleDateChange(field.name, date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    : null}
+                ? <ImageUpload
+                    value={formData.imageUrl}
+                    onChange={handleImageChange}
+                    folderName="committee"
+                  />
+                : field.type === "dropdown"
+                  ? <div>
+                      <select
+                        id={field.name}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={formData[field.name] || ""}
+                        onChange={handleChange}
+                      >
+                        {field.options.map(option =>
+                          <option value={option}>
+                            {option}
+                          </option>
+                        )}
+                      </select>
+                    </div>
+                  : field.type === "number"
+                    ? <Input
+                        id={field.name}
+                        name={field.name}
+                        type={field.type}
+                        value={formData[field.name] || ""}
+                        onChange={handleChange}
+                        required={field.required}
+                      />
+                    : field.type === "achievements"
+                      ? <AchievementList
+                          achievements={formData.achievements || []}
+                          onChange={handleAchievementsChange}
+                        />
+                      : field.type === "date"
+                        ? <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !formData[field.name] &&
+                                    "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {formData[field.name]
+                                  ? format(formData[field.name], "PPP")
+                                  : <span>Pick a date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={formData[field.name]}
+                                onSelect={date =>
+                                  handleDateChange(field.name, date)}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        : null}
         </div>
       )}
 

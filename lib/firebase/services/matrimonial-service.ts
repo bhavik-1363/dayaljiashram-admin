@@ -76,6 +76,9 @@ export async function getMatrimonialProfiles(): Promise<MatrimonialProfile[]> {
         familyInfo: data.familyInfo,
         partnerInfo: data.partnerInfo,
         imageUrl: data.imageUrl,
+        images: data.images || [],
+        bioDataLink: data.bioDataLink || "",
+        defaultImageIndex: data.defaultImageIndex || 0,
       }
     })
   } catch (error) {
@@ -130,6 +133,9 @@ export async function getMatrimonialProfileById(id: string): Promise<Matrimonial
         familyInfo: data.familyInfo,
         partnerInfo: data.partnerInfo,
         imageUrl: data.imageUrl,
+        images: data.images || [],
+        bioDataLink: data.bioDataLink || "",
+        defaultImageIndex: data.defaultImageIndex || 0,
       }
     }
     return null
@@ -244,6 +250,9 @@ export async function getMatrimonialProfilesByStatus(status: string): Promise<Ma
         familyInfo: data.familyInfo,
         partnerInfo: data.partnerInfo,
         imageUrl: data.imageUrl,
+        images: data.images || [],
+        bioDataLink: data.bioDataLink || "",
+        defaultImageIndex: data.defaultImageIndex || 0,
       }
     })
   } catch (error) {
@@ -299,6 +308,9 @@ export async function getMatrimonialProfilesByGender(gender: string): Promise<Ma
         familyInfo: data.familyInfo,
         partnerInfo: data.partnerInfo,
         imageUrl: data.imageUrl,
+        images: data.images || [],
+        bioDataLink: data.bioDataLink || "",
+        defaultImageIndex: data.defaultImageIndex || 0,
       }
     })
   } catch (error) {

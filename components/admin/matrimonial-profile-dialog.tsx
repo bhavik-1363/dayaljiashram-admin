@@ -63,7 +63,7 @@ export function MatrimonialProfileDialog({ profile, open, onOpenChange }: Matrim
                   <img
                     src={images[currentImageIndex] || "/placeholder.svg"}
                     alt={`${profile.name} - Photo ${currentImageIndex + 1}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                     key={`${profile.id}-image-${currentImageIndex}`}
                   />
                   {profile.defaultImageIndex === currentImageIndex && (
@@ -220,7 +220,7 @@ export function MatrimonialProfileDialog({ profile, open, onOpenChange }: Matrim
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Annual Income</h3>
-                    <p>{profile.income ? `$${profile.income.toLocaleString()}` : "Not provided"}</p>
+                    <p>{profile.income ? `₹${profile.income.toLocaleString()}` : "Not provided"}</p>
                   </div>
                 </div>
 

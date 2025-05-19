@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "@/components/ui/use-toast"
 import type { MatrimonialProfile } from "@/components/admin/columns/matrimonial-columns"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -29,6 +28,7 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { uploadProfileImage } from "@/lib/firebase/storage"
+import { useToast } from "@/hooks/use-toast"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
@@ -70,6 +70,7 @@ export function EditMatrimonialProfileDialog({
   const [pdfChanged, setPdfChanged] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pdfInputRef = useRef<HTMLInputElement>(null)
+  const {toast} = useToast()
 
   const {
     register,
@@ -149,7 +150,7 @@ export function EditMatrimonialProfileDialog({
       let showUploadProgress = false
 
       if (imageChanged && images.length > 0) {
-        uploadedImageUrls = []
+        // uploadedImageUrls = []
         showUploadProgress = true
 
         // Upload each new image and track progress
@@ -219,6 +220,7 @@ export function EditMatrimonialProfileDialog({
         hasUploadedPdf: !!bioDataLink,
         status,
         defaultImageIndex: defaultImageIndex,
+        alternatePhone: data.alternatePhone || "",
       }
 
       // Add images array if there are uploaded images
@@ -297,54 +299,53 @@ export function EditMatrimonialProfileDialog({
     const newImageUrls: string[] = []
     let hasErrors = false
 
-    Array.from(files).forEach((file) => {
-      // Check if adding this file would exceed the maximum
-      if (images.length + newImages.length >= MAX_IMAGES) {
-        if (!hasErrors) {
+    // Check if adding this file would exceed the maximum
+    if (imageUrls.length + files.length > MAX_IMAGES) {
+      if (!hasErrors) {
+        toast({
+          title: "Maximum images reached",
+          description: `You can only upload up to ${MAX_IMAGES} images.`,
+          variant: "destructive",
+        })
+        hasErrors = true
+      }
+    } else {
+      Array.from(files).forEach((file) => {
+        // Check file size
+        if (file.size > MAX_FILE_SIZE) {
           toast({
-            title: "Maximum images reached",
-            description: `You can only upload up to ${MAX_IMAGES} images.`,
+            title: "File too large",
+            description: `${file.name} is larger than 5MB.`,
             variant: "destructive",
           })
           hasErrors = true
+          return
         }
-        return
-      }
-
-      // Check file size
-      if (file.size > MAX_FILE_SIZE) {
-        toast({
-          title: "File too large",
-          description: `${file.name} is larger than 5MB.`,
-          variant: "destructive",
-        })
-        hasErrors = true
-        return
-      }
-
-      // Check file type
-      if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a supported image format (JPG, PNG, WebP).`,
-          variant: "destructive",
-        })
-        hasErrors = true
-        return
-      }
-
-      newImages.push(file)
-      newImageUrls.push(URL.createObjectURL(file))
-    })
-
-    if (newImages.length > 0) {
-      setImages(newImages)
-      setImageUrls(newImageUrls)
-      setImageChanged(true)
-
-      // If this is the first image, set it as default
-      if (newImages.length > 0 && imageUrls.length === 0) {
-        setDefaultImageIndex(0)
+  
+        // Check file type
+        if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+          toast({
+            title: "Invalid file type",
+            description: `${file.name} is not a supported image format (JPG, PNG, WebP).`,
+            variant: "destructive",
+          })
+          hasErrors = true
+          return
+        }
+  
+        newImages.push(file)
+        newImageUrls.push(URL.createObjectURL(file))
+      })
+  
+      if (newImages.length > 0) {
+        setImages(newImages)
+        setImageUrls([...imageUrls, ...newImageUrls])
+        setImageChanged(true)
+  
+        // If this is the first image, set it as default
+        if (newImages.length > 0 && imageUrls.length === 0) {
+          setDefaultImageIndex(0)
+        }
       }
     }
   }
@@ -355,10 +356,10 @@ export function EditMatrimonialProfileDialog({
 
     const file = files[0]
 
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > MAX_FILE_SIZE * 3) {
       toast({
         title: "File too large",
-        description: `${file.name} is larger than 5MB.`,
+        description: `${file.name} is larger than 15MB.`,
         variant: "destructive",
       })
       return
@@ -571,7 +572,7 @@ export function EditMatrimonialProfileDialog({
                       />
                       <div className="flex flex-col items-center">
                         <Upload className="mb-2 h-6 w-6 text-gray-400" />
-                        <span className="text-sm text-gray-500">Upload PDF (Max 5MB)</span>
+                        <span className="text-sm text-gray-500">Upload PDF (Max 15MB)</span>
                       </div>
                     </label>
                   )}
