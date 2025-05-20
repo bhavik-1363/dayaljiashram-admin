@@ -17,7 +17,7 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -40,6 +40,9 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/lib/firebase/auth-context"
+import { useActions } from "./action-provider"
+import { useToast } from "@/hooks/use-toast"
 
 // Regular menu items without sub-items
 const regularMenuItems = [
@@ -123,12 +126,32 @@ const facilitiesSubItems = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const [facilitiesOpen, setFacilitiesOpen] = useState(pathname.includes("/admin/facilities"))
+  const { logout } = useAuth();
+  const { confirmAction } = useActions();
+  const { toast } = useToast();
+    const router = useRouter()
 
   // Add this helper function
   const isActive = (path: string) => {
     // Check if the current path starts with the given path
     // This handles nested routes better
     return pathname === path || pathname.startsWith(`${path}/`)
+  }
+
+  const handleLogout = () => {
+    confirmAction({
+      title: "Logout",
+      description: `Are you sure you want to log out?`,
+      confirmText: "Logout",
+      action: async () => {
+        await logout()
+      toast({
+        title: "Logout successful",
+        description: "You have been logged out successfully.",
+      })
+      router.push("/login")
+      },
+    })
   }
 
   return (
@@ -203,10 +226,10 @@ export function AdminSidebar() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton className="opacity-50 cursor-not-allowed" onClick={(e) => e.preventDefault()}>
+              <SidebarMenuButton onClick={handleLogout}>
                 <div className="flex items-center gap-2">
                   <LogOut className="h-5 w-5" />
-                  <span>Logout (Disabled)</span>
+                  <span>Logout</span>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>

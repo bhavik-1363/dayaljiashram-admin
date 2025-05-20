@@ -16,12 +16,32 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/firebase/auth-context";
 import Image from "next/image";
+import { useActions } from "./action-provider";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 export function AdminHeader() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { confirmAction } = useActions();
+  const { toast } = useToast();
+  const router = useRouter()
+  
+  const handleLogout = () => {
+    confirmAction({
+      title: "Logout",
+      description: `Are you sure you want to log out?`,
+      confirmText: "Logout",
+      action: async () => {
+        await logout()
+      toast({
+        title: "Logout successful",
+        description: "You have been logged out successfully.",
+      })
+      router.push("/login")
+      },
+    })
+  }
   return (
-    console.log("user", user),
-    (
       <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
         <SidebarTrigger>
           <Menu className="h-5 w-5" />
@@ -70,16 +90,12 @@ export function AdminHeader() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="opacity-50 cursor-not-allowed"
-              onSelect={(e) => {
-                e.preventDefault();
-              }}
+              onSelect={handleLogout}
             >
-              Log out (Disabled)
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
     )
-  );
 }
