@@ -295,6 +295,7 @@ export function TrusteesManagement() {
               { name: "name", label: "Name", type: "text", required: true },
               { name: "position", label: "Position", type: "text", required: true },
               { name: "term", label: "Term", type: "text", required: true },
+              { name: "row_index", label: "Order", type: "number", required: true},
               { name: "bio", label: "Bio", type: "textarea", required: false },
               { name: "achievements", label: "Achievements", type: "achievements", required: false },
               { name: "imageUrl", label: "Photo", type: "image", required: false },
@@ -317,6 +318,7 @@ export function TrusteesManagement() {
                 fields={[
                   { name: "name", label: "Name", type: "text", required: true },
                   { name: "position", label: "Position", type: "text", required: true },
+                  { name: "row_index", label: "Order", type: "number", required: true},
                   { name: "term", label: "Term", type: "text", required: true },
                   { name: "bio", label: "Bio", type: "textarea", required: false },
                   { name: "achievements", label: "Achievements", type: "achievements", required: false },

@@ -51,6 +51,7 @@ export default function HostelsPage() {
       setError(null)
       try {
         const hostel = await getHostelByType(selectedHostel)
+        console.log("Fetched hostel data:", hostel)
         if (hostel) {
           setHostelInfo(hostel)
         } else {
@@ -63,9 +64,9 @@ export default function HostelsPage() {
             facilities: [],
             roomTypes: [],
             roomFeatures: [],
-            contactInfo: "",
             images: [],
             status: "active",
+            wardenName: "",
           })
         }
       } catch (err) {
@@ -496,14 +497,41 @@ export default function HostelsPage() {
           <CardContent className="pt-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="contactInfo">Contact Information (Warden Details)</Label>
-                <Textarea
-                  id="contactInfo"
-                  value={hostelInfo.contactInfo}
-                  onChange={(e) => handleInputChange("contactInfo", e.target.value)}
-                  className="min-h-[100px]"
-                  placeholder="Enter warden name, contact number, email, and office hours"
+                <Label htmlFor="contactInfo">Warden Contact Information</Label>
+                <hr/>
+                <br />
+                <div>
+                <Label htmlFor="hostelName">Name</Label>
+                <Input
+                  id="warden"
+                  value={hostelInfo.wardenName}
+                  onChange={(e) => handleInputChange("wardenName", e.target.value)}
                 />
+              </div>
+                <div>
+                <Label htmlFor="hostelName">Phone</Label>
+                <Input
+                  id="wardenPhone"
+                  value={hostelInfo.wardenPhone}
+                  onChange={(e) => handleInputChange("wardenPhone", e.target.value)}
+                />
+              </div>
+                <div>
+                <Label htmlFor="hostelName">Email</Label>
+                <Input
+                  id="wardenEmail"
+                  value={hostelInfo.wardenEmail}
+                  onChange={(e) => handleInputChange("wardenEmail", e.target.value)}
+                />
+              </div>
+                <div>
+                <Label htmlFor="hostelOfficeHours">Office Hours</Label>
+                <Input
+                  id="wardenOfficeHours"
+                  value={hostelInfo.wardenOfficeHours}
+                  onChange={(e) => handleInputChange("wardenOfficeHours", e.target.value)}
+                />
+              </div>
               </div>
             </div>
           </CardContent>

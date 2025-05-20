@@ -26,6 +26,8 @@ export interface AboutTrustContent {
   contactInfo: {
     address: string
     phone: string
+    telephone?: string
+    mapLink?: string
     email: string
     website?: string
     socialMedia?: {

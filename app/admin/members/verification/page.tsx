@@ -30,6 +30,7 @@ export default function MemberVerificationPage() {
       // Filter to only show pending requests
       const pendingRequests = requests.filter((req) => req.status === "pending")
       setVerificationRequests(pendingRequests)
+      console.log("Pending Requests:", pendingRequests)
 
       // Get member data for each request
       const membersService = getMembersService()

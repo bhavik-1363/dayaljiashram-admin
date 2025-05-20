@@ -36,8 +36,14 @@ const aboutTrustFormSchema = z.object({
   contactPhone: z.string().min(10, {
     message: "Phone number must be at least 10 digits.",
   }),
+  contactTelePhone: z.string().min(10, {
+    message: "Telephone number must be at least 7 digits.",
+  }),
   contactAddress: z.string().min(10, {
     message: "Address must be at least 10 characters.",
+  }),
+  contactMapLink: z.string().url({
+    message: "Please enter a valid Google Maps link.",
   }),
 })
 
@@ -93,6 +99,8 @@ export default function AboutTrustPage() {
             contactEmail: aboutTrustData.contactInfo?.email || defaultValues.contactEmail,
             contactPhone: aboutTrustData.contactInfo?.phone || defaultValues.contactPhone,
             contactAddress: aboutTrustData.contactInfo?.address || defaultValues.contactAddress,
+            contactTelePhone: aboutTrustData.contactInfo?.telephone || defaultValues.contactTelePhone,
+            contactMapLink: aboutTrustData.contactInfo?.mapLink || defaultValues.contactMapLink,
           }
 
           reset(formData)
@@ -127,6 +135,8 @@ export default function AboutTrustPage() {
           email: data.contactEmail,
           phone: data.contactPhone,
           address: data.contactAddress,
+          telephone: data.contactTelePhone,
+          mapLink: data.contactMapLink,
         },
       }
 
@@ -292,6 +302,14 @@ export default function AboutTrustPage() {
                   </div>
 
                   <div className="space-y-2">
+                    <label htmlFor="contactTelePhone" className="text-sm font-medium">
+                      Telephone Number
+                    </label>
+                    <Input id="contactTelePhone" placeholder="Enter telephone number" {...register("contactTelePhone")} />
+                    {errors.contactTelePhone && <p className="text-sm text-destructive">{errors.contactTelePhone.message}</p>}
+                  </div>
+
+                  <div className="space-y-2">
                     <label htmlFor="contactAddress" className="text-sm font-medium">
                       Address
                     </label>
@@ -304,6 +322,14 @@ export default function AboutTrustPage() {
                     {errors.contactAddress && (
                       <p className="text-sm text-destructive">{errors.contactAddress.message}</p>
                     )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="contactMapLink" className="text-sm font-medium">
+                      Map Link
+                    </label>
+                    <Input id="contactMapLink" placeholder="Enter google map link" {...register("contactMapLink")} />
+                    {errors.contactMapLink && <p className="text-sm text-destructive">{errors.contactMapLink.message}</p>}
                   </div>
                 </CardContent>
               </Card>

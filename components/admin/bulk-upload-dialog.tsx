@@ -201,8 +201,9 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     const errors: string[] = []
 
     // Required fields
+    if (!data.membership_no) errors.push("Membership Number is required")
     if (!data.name) errors.push("Name is required")
-    if (!data.email && !data.mobile) errors.push("Either email or mobile is required")
+    // if (!data.email && !data.mobile) errors.push("Either email or mobile is required")
 
     // Email format validation (if provided)
     if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
@@ -210,9 +211,9 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     }
 
     // Mobile format validation (basic)
-    if (data.mobile && !/^\d{10}$/.test(String(data.mobile).replace(/\D/g, ""))) {
-      errors.push("Mobile should be a 10-digit number")
-    }
+    // if (data.mobile && !/^\d{10}$/.test(String(data.mobile).replace(/\D/g, ""))) {
+    //   errors.push("Mobile should be a 10-digit number")
+    // }
 
     // Date validation
     if (data.joinDate) {

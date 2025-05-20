@@ -321,6 +321,7 @@ export function PastMembersManagement() {
             fields={[
               { name: "name", label: "Name", type: "text", required: true },
               { name: "term", label: "Term", type: "text", required: true },
+              { name: "row_index", label: "Order", type: "number", required: true},
               { name: "achievements", label: "Achievements", type: "achievements", required: false },
               { name: "imageUrl", label: "Photo", type: "image", required: false },
             ]}
@@ -342,6 +343,7 @@ export function PastMembersManagement() {
                 fields={[
                   { name: "name", label: "Name", type: "text", required: true },
                   { name: "term", label: "Term", type: "text", required: true },
+                  { name: "row_index", label: "Order", type: "number", required: true},
                   { name: "achievements", label: "Achievements", type: "achievements", required: false },
                   { name: "imageUrl", label: "Photo", type: "image", required: false },
                 ]}

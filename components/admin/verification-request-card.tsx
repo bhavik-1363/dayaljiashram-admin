@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Check, X, ChevronRight } from "lucide-react"
+import { Check, X, ChevronRight, FileText } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getVerificationService, type VerificationRequest } from "@/lib/firebase/services/verification-service"
 import type { Member } from "@/components/admin/columns/member-columns"
@@ -228,6 +228,13 @@ export function VerificationRequestCard({ request, member, onApprove, onReject }
     )
   }
 
+  
+  const openPdf = () => {
+    if (request.verificationData?.aadharFile) {
+      window.open(request.verificationData?.aadharFile, "_blank")
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -264,7 +271,7 @@ export function VerificationRequestCard({ request, member, onApprove, onReject }
           <TabsContent value="details" className="space-y-4 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Requested By</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Requested From</h3>
                 <p>{request.requestedBy}</p>
               </div>
               <div>
@@ -272,8 +279,21 @@ export function VerificationRequestCard({ request, member, onApprove, onReject }
                 <p>{formatDate(request.requestedAt as string)}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                <p className="capitalize">{request.status}</p>
+                <h3 className="text-sm font-medium text-muted-foreground">Requested User Email</h3>
+                <p>{request.verificationData?.email}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Requested User Phone</h3>
+                <p>{request.verificationData?.phone}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Verification Document</h3>
+                {request.verificationData?.aadharFile && (
+              <Button variant="outline" className="mt-3 gap-2" onClick={openPdf}>
+                <FileText className="h-4 w-4" />
+                View Document
+              </Button>
+            )}
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Number of Changes</h3>

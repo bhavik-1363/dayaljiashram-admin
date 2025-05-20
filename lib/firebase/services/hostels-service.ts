@@ -35,7 +35,10 @@ export interface Hostel {
   facilities: string[];
   roomTypes: string[];
   roomFeatures: string[];
-  contactInfo: string;
+  wardenName?: string;
+  wardenPhone?: string;
+  wardenEmail?: string;
+  wardenOfficeHours?: string;
   images: string[];
   status: "active" | "inactive" | "maintenance";
   // capacity?: string;
@@ -79,8 +82,6 @@ const mockHostels: Record<string, Hostel> = {
       "Fan",
       "Chair"
     ],
-    contactInfo:
-      "Warden: Mr. Rajesh Patel\nPhone: (555) 123-4567\nEmail: boyshostel@community.org\nOffice Hours: Monday-Saturday 9am-5pm",
     images: [],
     status: "active"
   },
@@ -112,8 +113,6 @@ const mockHostels: Record<string, Hostel> = {
       "Chair",
       "Mirror"
     ],
-    contactInfo:
-      "Warden: Mrs. Priya Sharma\nPhone: (555) 987-6543\nEmail: girlshostel@community.org\nOffice Hours: Monday-Saturday 9am-5pm",
     images: [],
     status: "active"
   }
@@ -139,7 +138,6 @@ export const getAllHostels = async (): Promise<Hostel[]> => {
         facilities: data.facilities,
         roomTypes: data.roomTypes,
         roomFeatures: data.roomFeatures,
-        contactInfo: data.contactInfo,
         images: data.images,
         status: data.status,
         // capacity: data.capacity,
@@ -176,7 +174,6 @@ export const getHostelById = async (id: string): Promise<Hostel | null> => {
         facilities: data.facilities,
         roomTypes: data.roomTypes,
         roomFeatures: data.roomFeatures,
-        contactInfo: data.contactInfo,
         images: data.images,
         status: data.status,
         // capacity: data.capacity,
@@ -218,7 +215,10 @@ export const getHostelByType = async (
         facilities: data.facilities,
         roomTypes: data.roomTypes,
         roomFeatures: data.roomFeatures,
-        contactInfo: data.contactInfo,
+        wardenName: data.wardenName,
+        wardenPhone: data.wardenPhone,
+        wardenEmail: data.wardenEmail,
+        wardenOfficeHours: data.wardenOfficeHours,
         images: data.images,
         status: data.status,
         // capacity: data.capacity,
