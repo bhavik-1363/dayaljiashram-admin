@@ -11,6 +11,7 @@ import { DeleteConfirmationDialog } from "@/components/admin/delete-confirmation
 import { Avatar } from "@/components/ui/avatar"
 import { AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { format } from "date-fns"
+import { useActions } from "../action-provider"
 
 export type GalleryItem = {
   id: string
@@ -42,7 +43,21 @@ export const galleryColumns = ({
     const item = row.original
     const [isViewOpen, setIsViewOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
-    const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+    const { confirmAction } = useActions()
+
+
+      const handleDeleteGalleryItem = (id: string, name?: string) => {
+        const galleryName = name || "this gallery item"
+        confirmAction({
+          title: "Delete Gallery Item",
+          description: `Are you sure you want to delete ${galleryName}? This action cannot be undone.`,
+          action: () => {
+            if (onDelete) {
+              onDelete(id)
+            }
+          },
+        })
+      }
 
     return (
       <>
@@ -55,7 +70,7 @@ export const galleryColumns = ({
             <Pencil className="h-4 w-4" />
             <span className="sr-only">Edit</span>
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setIsDeleteOpen(true)}>
+          <Button variant="ghost" size="icon" onClick={() => handleDeleteGalleryItem(item.id, item.title)}>
             <Trash2 className="h-4 w-4 text-destructive" />
             <span className="sr-only">Delete</span>
           </Button>
@@ -76,7 +91,7 @@ export const galleryColumns = ({
           />
         )}
 
-        <DeleteConfirmationDialog
+        {/* <DeleteConfirmationDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
           onConfirm={() => {
@@ -85,7 +100,7 @@ export const galleryColumns = ({
           }}
           itemName={item.title}
           itemType="gallery item"
-        />
+        /> */}
       </>
     )
   }
